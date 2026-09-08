@@ -325,11 +325,15 @@ Small, green, hunched, crude weapon. Silhouette must not resemble the hero.
 
 ## 6. Verify before you hand it back
 
+Two gates. Both must pass, in this order.
+
+### 6.1 — The validator (automated, mandatory)
+
 ```bash
 node tools/validate-assets.mjs
 ```
 
-Zero dependencies, needs only Node. It checks every file for:
+Zero dependencies, needs only Node. **Format checks**, per file:
 
 - exact 16×16 dimensions
 - 8-bit RGBA
@@ -338,10 +342,37 @@ Zero dependencies, needs only Node. It checks every file for:
 - opaque-everywhere for tiles, transparent background for sprites
 - all Tier 1 filenames present, none misspelled
 
-It prints per-file failures with the offending pixel coordinates and colours, and
-on success writes `assets/manifest.json` for the engine.
+**Visual-readability checks** (§3B), across files:
 
-**Iterate until it passes.** Art that does not pass cannot be loaded by the game.
+- `tile_wall` mean luminance ≥ 85
+- every floor tile ≤ 48, and ≥ 2.5:1 contrast against `tile_wall`
+- `tile_stairs_down` ≥ 90
+- floor variants differ from each other by ≥ 10% of pixels
+
+It prints failures with offending pixel coordinates, colours and measured ratios,
+and on success writes `assets/manifest.json` for the engine.
+
+### 6.2 — The preview (visual, mandatory)
+
+```bash
+node tools/preview.mjs
+```
+
+Writes `review/contact.png` (every sprite at 6×) and `review/room.png` (an
+assembled 9×7 dungeon with hero, goblin, key, door, torches and the exit).
+
+**Open `review/room.png` and look at it.** The numeric gates in §3B are a floor,
+not a ceiling — art can satisfy every one of them and still read badly once
+assembled. In `review/room.png` you must be able to see, without effort:
+
+- where the corridors are
+- which tiles the hero can walk on
+- the hero, at a glance, distinct from the goblin
+- the exit stair, drawing the eye as the goal
+
+If you cannot, the art is not done regardless of what the validator says.
+
+**Iterate until both pass.** Art that fails either cannot be used by the game.
 
 ---
 
