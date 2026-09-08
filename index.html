@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spellbound</title>
+<style>
+  :root{
+    --void:#0b0910; --shadow:#17141f; --stone-d:#2b2739; --stone-m:#443f57;
+    --stone-l:#676078; --stone-h:#938ca0; --wood-m:#6b4227; --wood-l:#a86b3c;
+    --flame-d:#c2531f; --flame-m:#f0a447; --flame-l:#ffd98a;
+    --robe-m:#2f5d8a; --robe-l:#4a8fc7; --gob-l:#7cb551;
+    --blood-m:#a32b2b; --blood-l:#d94f4f; --bone:#e8e0d0;
+    --ink:#cfc9d8; --ink-dim:#8b8399;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--void); color:var(--ink);
+    font:14px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    overflow:hidden;
+  }
+  button{font:inherit;cursor:pointer}
+
+  /* ---------- shell ---------- */
+  #app{display:grid;grid-template-columns:minmax(0,1fr) 460px;height:100vh}
+  @media (max-width:1100px){ #app{grid-template-columns:1fr;grid-template-rows:1fr auto;overflow:auto} }
+
+  /* ---------- left: stage ---------- */
+  #stage{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--stone-d)}
+  #board{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    padding:20px;min-height:0;
+    background:
+      radial-gradient(ellipse at 50% 40%, #1a1626 0%, var(--void) 70%);
+  }
+  canvas{
+    image-rendering:pixelated; image-rendering:crisp-edges;
+    max-width:100%;max-height:100%;
+    border:1px solid var(--stone-d);
+    box-shadow:0 12px 48px rgba(0,0,0,.6);
+  }
+  #hud{
+    display:flex;gap:18px;align-items:center;padding:10px 18px;
+    border-top:1px solid var(--stone-d);background:var(--shadow);
+    font:12px/1 var(--mono);letter-spacing:.04em;flex-wrap:wrap
+  }
+  .stat{display:flex;align-items:center;gap:7px;color:var(--ink-dim)}
+  .stat b{color:var(--ink);font-weight:600}
+  .stat.torch b{color:var(--flame-m)}
+  .stat.hp b{color:var(--blood-l)}
+  .pips{display:flex;gap:2px}
+  .pip{width:7px;height:7px;background:var(--blood-m);border-radius:1px}
+  .pip.off{background:var(--stone-d)}
+  #log{
+    height:132px;overflow-y:auto;padding:10px 18px;
+    border-top:1px solid var(--stone-d);background:#100e18;
+    font:12px/1.7 var(--mono);color:var(--ink-dim)
+  }
+  #log .l{white-space:pre-wrap}
+  #log .l.hit{color:var(--flame-m)}
+  #log .l.bad{color:var(--blood-l)}
+  #log .l.win{color:var(--gob-l)}
+  #log .l.say{color:var(--robe-l)}
+
+  /* ---------- right: panel ---------- */
+  #panel{display:flex;flex-direction:column;min-height:0;background:var(--shadow)}
+  #panel > * {border-bottom:1px solid var(--stone-d)}
+  .head{
+    display:flex;align-items:baseline;gap:10px;padding:13px 18px 11px;
+  }
+  .head .ch{font:10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--flame-d)}
+  .head h1{margin:0;font-size:16px;font-weight:600;letter-spacing:.01em}
+  .head .n{margin-left:auto;font:11px/1 var(--mono);color:var(--ink-dim)}
+
+  #brief{padding:0 18px 14px;font-size:13px;color:var(--ink)}
+  #brief .teach{
+    margin-top:9px;padding:9px 11px;border-left:2px solid var(--flame-d);
+    background:rgba(240,164,71,.06);font-size:12.5px;color:var(--flame-l)
+  }
+  #brief .teach b{color:var(--flame-m)}
+
+  /* editor */
+  #edwrap{flex:1;display:flex;flex-direction:column;min-height:180px;position:relative}
+  #edit{display:flex;flex:1;min-height:0;background:#100e18}
+  #gutter{
+    padding:12px 0 12px;width:44px;flex:none;text-align:right;
+    font:13px/1.6 var(--mono);color:#4b445c;user-select:none;overflow:hidden
+  }
+  #gutter div{padding-right:10px}
+  #gutter div.cur{color:var(--flame-m);background:rgba(240,164,71,.11)}
+  #code{
+    flex:1;min-width:0;padding:12px 14px 12px 4px;margin:0;border:0;outline:0;resize:none;
+    background:transparent;color:var(--ink);font:13px/1.6 var(--mono);
+    tab-size:2;white-space:pre;overflow:auto
+  }
+  #bar{display:flex;gap:8px;align-items:center;padding:10px 18px;background:var(--shadow)}
+  .btn{
+    padding:7px 15px;border:1px solid var(--stone-m);border-radius:4px;
+    background:var(--stone-d);color:var(--ink);font-size:13px;font-weight:500
+  }
+  .btn:hover{background:var(--stone-m);border-color:var(--stone-l)}
+  .btn.go{background:var(--flame-d);border-color:var(--flame-m);color:#fff}
+  .btn.go:hover{background:var(--flame-m);color:var(--void)}
+  .btn:disabled{opacity:.45;cursor:default}
+  #bar .sp{margin-left:auto;font:11px var(--mono);color:var(--ink-dim)}
+
+  /* spellbook */
+  #book{max-height:230px;overflow-y:auto;background:#100e18}
+  #book h2{
+    margin:0;padding:11px 18px;font:10px/1 var(--mono);letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-dim);position:sticky;top:0;background:#100e18;
+    border-bottom:1px solid var(--stone-d);cursor:pointer;user-select:none
+  }
+  #book h2::before{content:"▾ ";color:var(--stone-l)}
+  #book.closed h2::before{content:"▸ "}
+  #book.closed dl{display:none}
+  #book dl{margin:0;padding:6px 18px 14px}
+  #book dt{font:12.5px var(--mono);color:var(--flame-m);margin-top:9px}
+  #book dd{margin:2px 0 0;font-size:12px;color:var(--ink-dim)}
+
+  /* errors */
+  #err{display:none;padding:11px 18px;background:rgba(163,43,43,.14);border-top:1px solid var(--blood-m)}
+  #err.show{display:block}
+  #err .msg{font-size:13px;color:#ffb3b3}
+  #err .msg b{color:#fff}
+  #err .raw{margin-top:7px;font:11px var(--mono);color:#a3899a;display:none}
+  #err.open .raw{display:block}
+  #err .tog{margin-top:6px;font-size:11px;color:var(--ink-dim);text-decoration:underline;background:none;border:0;padding:0}
+
+  /* map screen */
+  #map{position:fixed;inset:0;background:rgba(11,9,16,.96);z-index:20;overflow:auto;display:none}
+  #map.show{display:block}
+  #map .in{max-width:900px;margin:0 auto;padding:44px 24px 60px}
+  #map h1{margin:0 0 4px;font-size:26px;letter-spacing:.02em}
+  #map .sub{color:var(--ink-dim);margin-bottom:28px;font-size:13px}
+  #map .chap{margin:26px 0 10px;font:10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--flame-d)}
+  #map .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px}
+  .card{
+    text-align:left;padding:12px 14px;border:1px solid var(--stone-d);border-radius:5px;
+    background:var(--shadow);color:var(--ink)
+  }
+  .card:hover:not(:disabled){border-color:var(--flame-d);background:var(--stone-d)}
+  .card .t{font-weight:600;font-size:13.5px}
+  .card .c{font:11px var(--mono);color:var(--flame-m);margin-top:3px}
+  .card .s{font:11px var(--mono);color:var(--ink-dim);margin-top:5px}
+  .card.done{border-color:#37613a}
+  .card.done .t::after{content:" ✓";color:var(--gob-l)}
+  .card:disabled{opacity:.4}
+  #map .close{margin-top:32px}
+
+  /* victory */
+  #win{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:30;background:rgba(11,9,16,.9)}
+  #win.show{display:flex}
+  #win .box{width:min(420px,92vw);padding:30px 32px;border:1px solid var(--flame-d);border-radius:8px;background:var(--shadow);text-align:center}
+  #win h2{margin:0 0 6px;font-size:22px;color:var(--flame-m)}
+  #win .st{margin:16px 0 22px;font:12px/1.9 var(--mono);color:var(--ink-dim)}
+  #win .st b{color:var(--ink)}
+  #win .row{display:flex;gap:8px;justify-content:center}
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="stage">
+    <div id="board"><canvas id="cv" width="576" height="448"></canvas></div>
+    <div id="hud">
+      <span class="stat torch">🔥 torch <b id="hTorch">—</b></span>
+      <span class="stat hp">hp <span class="pips" id="hHp"></span></span>
+      <span class="stat">turn <b id="hTurn">0</b></span>
+      <span class="stat" id="hPar"></span>
+    </div>
+    <div id="log"></div>
+  </section>
+
+  <aside id="panel">
+    <div class="head">
+      <span class="ch" id="pChap"></span>
+      <h1 id="pTitle"></h1>
+      <span class="n" id="pNum"></span>
+    </div>
+    <div id="brief">
+      <div id="pBrief"></div>
+      <div class="teach" id="pTeach"></div>
+    </div>
+    <div id="edwrap">
+      <div id="edit">
+        <div id="gutter"></div>
+        <textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+      </div>
+      <div id="err">
+        <div class="msg" id="errMsg"></div>
+        <button class="tog" id="errTog">show the arcane text</button>
+        <div class="raw" id="errRaw"></div>
+      </div>
+      <div id="bar">
+        <button class="btn go" id="bRun">Cast ▶</button>
+        <button class="btn" id="bReset">Reset</button>
+        <button class="btn" id="bMap">Levels</button>
+        <span class="sp" id="speedLbl"></span>
+      </div>
+    </div>
+    <div id="book">
+      <h2 id="bookH">Spellbook</h2>
+      <dl id="bookList"></dl>
+    </div>
+  </aside>
+</div>
+
+<div id="map"><div class="in">
+  <h1>Spellbound</h1>
+  <div class="sub">An apprentice's grimoire. Choose a page.</div>
+  <div id="mapBody"></div>
+  <button class="btn close" id="mapClose">Back to the dungeon</button>
+</div></div>
+
+<div id="win"><div class="box">
+  <h2 id="winH">The stair is yours</h2>
+  <div id="winSub"></div>
+  <div class="st" id="winSt"></div>
+  <div class="row">
+    <button class="btn go" id="winNext">Next level ▶</button>
+    <button class="btn" id="winStay">Stay here</button>
+  </div>
+</div></div>
+
+<script>
+/*__SIM_START__*/
+/* ============================================================================
+   Spellbound — simulation core.  No DOM in this block: tools/verify-levels.mjs
+   loads it in Node to prove every level is solvable by its reference solution.
+   ========================================================================== */
+
+const ATLAS = /*__ATLAS__*/ {"fx_slash_0":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAN0lEQVR42mNgGAWjYBSMglEwCkbBKKAiePHgwn8QHrV41PJRy4ef5TAHjOAS7vC8Eez7UTDsAQDFRUBQaR0z0wAAAABJRU5ErkJggg==","fx_slash_1":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAASUlEQVR42mNgGAWjYBSMglEwCkbBKCABvHhw4T8+PGAW09QhLw7P+0+uIwdFNA24IwZFgh2NilEHjDpgwB0woGXBgBdEg76KBwDYe9cWcTBs/wAAAABJRU5ErkJggg==","fx_slash_2":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAbElEQVR42mNgGAWjYBSMglEwCqgEXjy48B+E6WYZqQ6gmuNgFqEbSNABh+f9p2lwgyygWxQMm0Q7/HPLaFxRJSpo4QBYlh04B+AozOiWaklyAC1CgSxPUassH9BygOSgHzYl4MD5mpptAFoBAC0rrl0uohYFAAAAAElFTkSuQmCC","goblin_attack_east":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABP0lEQVR42u2VMYoCQRBFJxUTA0EzE0Fw4w00EWRzUQRTM4O9wCIewcwLeAQTz9fLE76URbeI9AwIXfDp0a7p/+t3d01VlShRokSJEp8c02E/gMaJv0aT8L0eh8V+Gg7X5W38mW1CIxVDDkRu0YgIiFPAldR7p+M57LZ/Iav9wu98dH+OuQBxNgGpM5ByQeSX/SrPgY05wG/+73UHDwQ4AzEist0WW7lghSACMRBCjIisV1UCGL0TVhhznIfsfSJlv2AF+i3J1gusCJ5tlRJSSw+gIlkPKfurqmtvySJX5foOSMCzJpTt7styDpf21wqozXp/+LwwgKi3BMhKKvKwC8fmY/mv5FrOqt3qBIGXaR4CLVQ9nBEx5MXmbb+PraV5ywceBNhFY9DiqTxLksp5KgBLbEWAqgVfkc+LjR5ewD+Z0vdsbWSMhAAAAABJRU5ErkJggg==","goblin_attack_north":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABNklEQVR42u2UsWoDMRBErzVpXBiS7hqDwalTxE0gpDeGgFt3LvwDweQT0uUH8hP+PoV3MMewyARC9iCghUE6aU8zGknbdS1atGjRosV/jHPfl83ybgD9ScnvV4/l4XVdtudNeb/shpbvScghcnIHwtIFQBwhATUXXp72Jc1+kR8Pb+O3EzL++fFVJrkDDnK4nJAjIuUY/C7oG2G3i35wAWLw5/eCBZ1UYBywc5HTT7Hf7Rb5zWw+EJ6eV3nkBBZH+90N7E8jjwJqQlLJ/QVgNWDHOv/0QuTnTx8BEgQmsb5W9/38UwVcO2dc0FH8evEIvWm1QHPej//Uxn1er8TX7HjDQAVEoJSqnNJ6ns95PgTkeDWM66luCKOASBihxX2slusia/OMVQX4T9pBbH+C59X6tNqI8A1TxeuAIF59CgAAAABJRU5ErkJggg==","goblin_attack_south":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABVUlEQVR42u2UsUoDQRCG0wYbi4B2aYRArC1MExB7MQi26Sx8ATl8BDtfII+Qxudb+Rb+48+QLMl5Fyx24Gd3udmdb2ZvZzSqVq1atWrV/rM102nq8u1Yu5oUznhbf6Rts0q3s/vWaXFznedPzSJ9/jxnMX9cvqbBAPxwNnhw6e5lnkEZi4eeAkBgAABRFRgjAGtXbwCUm+BIjqoAmWoEUnO/rj8DqAoAAIMuxpdtpjH7U4MfBSAIpDt2OQTrQQA8MHNdg0sggwAIwkvsUAo+2BVE0w8Y7/8sAP4M/c/v8gI6V0ABeRXvD7MsXcfZrkAZA+E/Ze99oPQitJne4I2pt054CEB9IXbNzq1YXY6FRABGL3NJ+KhHlMS5iqdzcwmR+j76/trsrJH78T36sCYAPmrhSBXTHvlILYAcDmmfn8NoHSGjPJkdAM9cGcSxJGVa8tV3B/gFA9wHId99OrYAAAAASUVORK5CYII=","goblin_attack_west":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABQklEQVR42u1VMQrCQBBMKzYWgnZphIDWFgZBEHtRBFs7i3xAgk+w8wOWlja+72SECZvloobcBYRbGOLlsruzc3trFAULFixYsGD/ankcG6L15NPd2KzztITWkq8W+3fC83NTAGuQAgb9hoocDycD1KlewgmB6+VmJcHqgXs2N498W6xBDPuNJZ4kM1NFQlcr5Yef07NGclSYLZNSYEiMZJqMcxLpaGjYD5AWwQHdA7oRnaoAEkiOwEzCp6ycpJwTIAmZgErgKLQaXghIIoCNmLdG/HRTeO3QpACPQpL0Og1ZMZVhf3gnweq15HJIeT0KBOe11JWSQK2JiCDoaA12OxPZvrH58DeP5ptP1O30DAHmHD4YxRzHBBzwXdU+1ojBWIRtnygRYNAqUHr5TpIhNEkJ+FcSkH9CcgzrSn6FzU8r8ALJK/u5/l6nAQAAAABJRU5ErkJggg==","goblin_walk_east_0":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAzklEQVR42mNgGAWjYBSMglEwCkbBUAfiIvL/QZjuFmurW/73r7L6X7M1EIxBbLo4BGSJaYgWGCM7AOYIuvkcFwbJ08URsBCAYWQ+XR2AHPzIjqGpA2CWI/saxAY5jOZRALII2dfICZLmPseVAF3sw+lTDsB8j+5rKxUJ+jsAlgDpGgLIUQCylG6pHgZAQQ3zOYgNckR6QgUGpqkDYMEPYmc7qaNYPLlnAZimaVaEFUIgGlYv0KX4hVVEyHEOcwxdHQGKd2TLQI7i5hQg23IAHWDo+WQRStgAAAAASUVORK5CYII=","goblin_walk_east_1":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA0ElEQVR42mNgGAWjYBSMglEwCkbBUAbiIvL/YZjulpuGaP33r7L6X7M1EIxBfLo4RFvdEmwZugNAGMSnm89xYW5OAfo4AtkhG6qCUPh0iwbkKEAOBRf7cNo5AmQ4zCL06AA5DCRvpSLxn6bBj+xr5OgAOYDmQY/sY5gjaG4xDCAHPczXIHpAHIAcEjSNc2xRAPM13R0AKmqRLQWl+PSECgxMl0QIckC2kzqKxZN7FoBpmtUJIEthwQ9igyyiWyWEXBDBUj1yxTQg7QFkB5AbCgCOoer9L7oJSwAAAABJRU5ErkJggg==","goblin_walk_north_0":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABsUlEQVR42u2XMUoEQRBFJxUTA0GzSYQFjQ3cRBBzEQRTMwMvIItHMDMXL+EJvIy3aPnCh7/f7unqmcZAHPisO7Pd9aq6aqochsr18vyWPj9e0/3dY9qMYxqCF9ZBw//1J6/10WE62B+3dLI6+53zhqHTm+N0tVlvCffwDDDdvIwaVwhGRNfNgoIxDSu/1wCg3Z29H+tyDoVCzbBiUxooQfAZ13APqBkAC3SDJZqdF+7FHC2ujiUQOLbm0PeAYA50K0lCQKUk1PPWKuj2TshVwNP79bdKldDVuBstSWG6QNB4zkBODtME4U0Ff9cM1gDgQBPA5fltcu+5USsM5dVQLE1kL0YvQKj3TKoohCerOsXITgJA7j1LMArgx+dHWwXwxRA8iRp3YM2FJgB6D+NRAPyezUzv895kZcCIArCXa3eMeI8RXn/PZ6HZQD3VKYcgEWn/8MhUy9FDzQ25+cPFalI+SyhA6H1AAG6ATTV8UxAs4UUAXMx8wKd2whwE72lXdICm2YBnqL3dxyw989yLS6Mwezj1WcAN+DOteU/M2f835KahUtdsbkAtE7KqBhBtw1+jRpli1kgtMwAAAABJRU5ErkJggg==","goblin_walk_north_1":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAz0lEQVR42mNgGAWjYBSMglEwCkbBKCATmIZo/fevsgJjEJuuloMsrdkaiIJhjuDmFKCNY7TVLcGWgGhsDgCJwdTQxAHiIvL/kYMd3XJYVNA0OmA+hFmIjkFyIIfSNP5hjsCGrVQkaJ8YsYUC3RwAS4D4MF3yPrZ0ABNzsQ//T1Pfw4IbOSfAsiBNCyWYpaB4Ro8KWOpHLito4gCYRSBHZDupo2CYA2gWCiDDQRhmEbIjYL6GhQ5dKiJYtqN53KMDmKWg1A6jB6RGxFYykhP8AOz//7R2yvzsAAAAAElFTkSuQmCC","goblin_walk_south_0":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZUlEQVR42u2Wv0oEMRDGrxUbC0E7G+FAawuvEcReFMHWzsIXkMNHsPMF7hFsfL7IL/DBZ3ZyC7dz2Gxg2Mkkm/nmb7JYzGMe85jHPP5xrM5PS3fx8OCotJQN4OT4LD7zcnldrp4uyv16VT5+HirBI2MtHQCu4GAEUi7FLbHGvrub50ppAGRxa3kEwPemhcAPFe/kYZBsajj+AOCwVsE2fqr1YRJ6/FsPOLEvIxnDKkDY5oPzSsK9lKE8ELnb+Qz3DwAw6SVbLw9SAUSxd4sjQGlVoAqIynBsngLAD1RXjLJfrdjX4emIWy+WMQCKPQocgHdAKVS79nx5u13uDoAfvc1y6yHj0CgfUM46VrvXdg4BP7s71QcgQMg6eQbFry/vVc6eKRfS4Db0cpTVshal0Nfnpn6RTW1I3U7oAJij8Hv9WClL+Wgr9ngLAG5HedajZADA3wXKCcXfaa9PMu98mc+v3qP0F8mFBFCh1RGeAAAAAElFTkSuQmCC","goblin_walk_south_1":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABRElEQVR42u1WuwoCQQy8VmwsBO1shAOtLTwEQexFEWztLPwBET/Bzh+wtLTx+1bmYGQId1hcViw2EKK7SyaPIbksS5IkSZIk/yztVieo9rqD8BPgcT4Nk+0orM5FuLzWpeI3znAXDXQ535XOYRVcFUGgEnjvGgxBAWCzV+UbWKhrBehUA+CZVoD3sK5toPPjIv8AVynfufPBkk+zt1WIRkYQTEts2xIVXNuggPZ3tCDgWJmuFagip+tgKob9WrJVBUMuuGdvwer+swpuxCMAeqtEtMopqO8bl17BOGKZpZ2CeM+KuQwjzR7OAICzqmHEe2xGbUNjMmIPwCEsgGkBBktl/20b3HgAwMP+FJ7nTWmZMcAVkFsTd2yJaxCP4yzcrvcyCJ65Eu8bKZEhwNkG3ZZsQdQvIpZWy2vX9c+/D3VTegbwBnk70dbf3bwNAAAAAElFTkSuQmCC","goblin_walk_west_0":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA2ElEQVR42u1VuwoCMRC8jxC0SyMcaG3hNYLYH4pga2fhD0jwo2z8vsgE5lhCLCwyIOzAsHcpbmazj+s6h8PhcDgc/4r5LCRSLrw5r9IYh/R8H3PEu8wAhUkaANf9tq0RCECQony2Z82zp9ArnrTih91lunJbBopLmhElsGUoSwGTEhNsOjsNoHQaak0INp+EmgneBntiWC6SZCGVvUADkuyRZa0Rm5bgvu/z/N+uj4k4gxlm38wARCD4zYB0H9hxRIQByb+gnAAQyyeGkKPMhF1GFOSW/PVbH3b27+shDARwAAAAAElFTkSuQmCC","goblin_walk_west_1":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABTUlEQVR42u2WvYrCQBSF08o2FoLb2QjCWltoI4i9KMK2dha+gAQfwW5fwEew8flGTuCEM+MYFvZeCzcDlySTkPPduT8zRdGOdrTj34+PTje8FUC/NwjL+XeYbL9qG4+mYTb8DK4AEIDQqpyF020dGeYAgm8A6AIAr3PiCgBAXCNNCwB4peK4b7JoFSwA6FlqOXHMm4cgFbiWm2glCMM8MAXILX0u/swB8yr47bI/hbCqAiRWCvAMLIKwbEQqlAprSNwAsAo0iquw3tel6LEXpABaCfrsuhmxN6SxV4gqFF4A2h1fDoB/wvvcXkAA1xBoDrAa0AEJZZoD2AX3u2NkmFODOEyXH5BVW7YC+DlfsoZ3h8XoAaA+pPwVAD9JPVajEEMAY69wywEmIRMPz7iyNKMjmgeA9gCegOAxwdxaMcW1+TAJG0vGw3uNd9P3d1T196zQu3weAAAAAElFTkSuQmCC","hero_attack_east":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA30lEQVR42mNgGAWjYBSMglEwCkbBUATa6pb/5e2T/+vHdv0HselqOcxiZEw3R4iLyGNYDsN0D/oBCQWYAwYsGmCWo2NsDnCxD/+fnlBBHUfBDAKlAWRLkR0BkgM5AoRB6if3LABjii23UpH4/+LwPLBhuEIAPVpADthQFfR/RbbNf6rEO8hykKG4cgA2DIoCqgQ/KASIsRw9JKjmAOSshysLgsRhiRCWDmiS94lxAM1KQFgqHxAHIGdBfGmALoUQvoRI01CAWY4vR9A8HYCyJKykA2FYcQsSg8mDMCnmAgCUyFLFo/DcOwAAAABJRU5ErkJggg==","hero_attack_north":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA1UlEQVR42mNgGAWjYBSMglEwCkbBUATy9sn/YXhALNeP7YJjEF9cRJ4+DtFWt0SxHIZB4nQNevQQQI6KbCf1/yBME98jxz2y5cjRsKEq6D8IW6lI/KepA9AxLHom9yygvgPSEyrAPiTkCFi0uNiHU89ykMUvDs8DG4oe7Lgsp7oDQMGKLfWjY1hUUDXuQQ6A+Z6uFiM7ADnV43IAzfI+zAHYygC6OACWBWE5AFc0UD3fYwsJfOmA5vUBrnqAbvUBvuCniwNAQQyKZ+QsCWKDLAaJkxsFAFIaOevs5RxMAAAAAElFTkSuQmCC","hero_attack_south":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABRUlEQVR42u2VvWoCQRSF9yEC2m0TsLCwTggIIgQsbawCAQuLfYGQRwiBFPZikcLSd7Cw9REsLX2DCd/AWS7LKmZnd0GYC4e587Nzzr13ZjZJokWLFi1atGj3aOlw7gZvXx4h+3QeUleZfPKz9y391gT0e0955BaMF9eeditX5gcJUPTZqJfjkghIPY4HV0sGFD0iIN5+Tt0me3Hj4cyP09r1i/cP30fAJRH/EiAikZ9/X3MRiNJZQKjmmautBGys6NnQitCcSsQYUBZYFyyAzcgCJPgIIUKR20PJumJJggRASNTL77UnoI8PLLn8slsRJOD5sZvXXsSAMaUeQCw0IgBYX9ew6mN0swAioqbUXPUX7A1oTIBIdLrJAlDNGxegLPCBTr3ehdYE2EzoStJe+x/UngGlXAIkQv3GM6DaAz4Gtl9FwB9yDGwdbqRzdwAAAABJRU5ErkJggg==","hero_attack_west":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA5UlEQVR42mNgGAWjYBSMglEwCkbBUAby9sn/YZjuluvHdv1HxiBHaKtb/qebz9EdAMID6gC6RQXIlzDL0C2nejSkJ1T8d7EP/4/LAdgw1R3w4vA8sCNAGGS4uIj8f3yOAMlhczhZwEpF4v+GqiCwgdjiGxuGOXpyzwLqhATIx9hSPD4MshzkEKolOmy+xucAkOXZTurUSwugUABhdEdhy4owNrJ6mmRFXAURjM3NKfCfpuUArhCA5RKaF0T4HDAgliM7gmYOIJQlQamfpqEAKphAhoMSGKx0BFkKwqDQAcnDMLFmAgDClFEF0W8l3wAAAABJRU5ErkJggg==","hero_hurt":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABK0lEQVR42u2UMUrFUBBF04qNhaDda4QUKaz9CIGPYK+FlSBY/CIbkCzhL8JGC0vX8N2MpTsYOYEbhqAo/HndXBhCSOCemTfvNk0qlUqlUqnUP9W1F1b6x7mW3zcPT/Y+3lg1gPP7rVFX/d1UQADlAb5er21Yt/EQmAkAAzrlCQgQq7NTG0uxt+EyHuDkuJgAMHzpugmAbnkCwD98ZwrAhJmrW4wFwPvnx/PUrQAoTcgfy96SmYyYhIyBo2MtJeY8mUYYgDre3ZZ58SjMOXPG7TsPNZe0YDLyV9EvZxVzLaHPABlq6ajws/9JhwdHU5f+VniI8PP/KxV9LmgKy3CqDoAxALxrEixraBb8FkzeXKWYrgogI8wFoN3AWBFdFUD5v7z7gqg6AWVDlNE3z7Yq0/Bya6cAAAAASUVORK5CYII=","hero_walk_east_0":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA80lEQVR42mNgGAWjYBSMglEwCkYBGUBb3fK/vH0yHIP4dLNYP7YLK6aLQ2A+x+UIuoQEtlBwsQ//n+2kTnsHiIvIY4RAekIFHA+YA14cnvd/cs8CcEjQLQfAHLAi2wbsgA1VQf9BDqS5A0CWIGdDkK9BjgClAbpkRfRoQM5+oGgAYVC0gGia5wKYQ0A0yFJQNIAshqUJmoUAsgNgloMwKBpAGMS2UpGgvQNguQDkc5jlIExTy5HrAGQHwHxNM8vRHQDLCTCam1OAfmUAOgaFBM3LAHTLsVVENHUEcvBjq4xo7gAQACUwkCWw0hCGYYmPnAQIAJyJLz93EPdwAAAAAElFTkSuQmCC","hero_walk_east_1":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA80lEQVR42mNgGAWjYBSMglEwCkYBGUBcRP6/vH0yCqaLxdrqlmDL9GO7sGKQ/IA6gC4hAQp+dItd7MP/Zzup0z4EYHGP7oD0hIr/K7Jt/oPk6e4AkOUvDs8DYxCb7gkR5oANVUH/rVQk6OMAmCNAGBT/IEeA0gDdygCQA5BTPgiDxCf3LABjkINANM1zAXJUgEIAFA0gDIoSujgA5giQj2HRAMOgqKG5A7z6j4MtAvkW2XJQYqRZgkROgLBCCBTsoHIAZjFdLEd3CDenAO0LImRLkTFdKyJkS9HrA5qGACz/46oNQfFOl7oA5hBkDBIjN/EBANNfNQXFFhBCAAAAAElFTkSuQmCC","hero_walk_north_0":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAvklEQVR42mNgGAWjYBSMglEwCkYBmUBcRP6/vH0yGIPYdLVcW93yv35sFwoGidHV5+gOAInRxRGwYB8QByDHO7IjkMWsVCT+080B2DBNEyQoiPFZDpKnaQikJ1T8xxcKIDmQGpo6AFu8I6cHmjoAW+rHlhtoXvjgyoYwNk19jysUkKOCJuUBLAdgK4aRi2MQ7WIfPjDpAJQLsp3UB84BNEuA+GpBujoAuSZELhNgbLq0DUBFLcgSUGigY3KKYQA7HjMGVXdC/QAAAABJRU5ErkJggg==","hero_walk_north_1":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA3ElEQVR42mNgGAWjYBSMglEwCkYBmUDePvm/fmwXHGurW/6nm+Ugy5AtB2GQg8RF5GnvCJAl6L6nayiALMHmAJAYCNMl7vFhmkZDekLF/wFzgJWKxP8Xh+f9BzkCFg3YLKdZOgA5YHLPAow4h2GYuIt9OO0cADIcW+qnS25ATv24siGyPM0KH/QgR/c5zUIBVgDhcwBIHJRIQWmFJtFQJS//H5QWCDkAhGlaFKPHOTKmeX2ArSKC+ZouDoClBZiloKwJipZsJ3UwTZfqGGQRCMN8C+PTzQGEHEQKAADVjDKLyHMjsgAAAABJRU5ErkJggg==","hero_walk_south_0":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABmUlEQVR42u2WO0oEQRBANxUTA0GzTYQNDIwVYUEEwdDESBAMDPYC4hFEMDAXAwND72Bg6hEMDb3ByBt4Te18NNgaMdiG2p6uHaZefbq6R6PlWI7l+K9je7JbjacXRVhn29hYH1e9xnfObqrju7daeEayIToBNB4BhCASvdQZAIZdgC7h/z8BOJyeVrODSRHW2VHoBIjGX65PijzP9gtEVi3MATS9vzy/qo1+PR3VAOhiFDIgWgDR+OfrQ0vubx9Tt2VnBBAA8LwJQER8J6MO5r6xt7U55x1hN/zOQjKnA6iIRvA4FmD0Ph2gqwdYeLEloydF1ANzehEqpRA/3osxOiLP6FmTtjQAvdNTPm4v0Kg7weaUBhC9bwL8JCkAVr8AKPsAmroUAH5i7n8DIPekJaMXlAhYdIgAbjVBmO0JbEthFwYg/3rFHNNhP2BeXVmrQXhHXQqAQy8jAMY8gPQYkEHOguZuMCUeTsig9wEW0VuNmiIBMm9FLQAjEI0rEWLQw8jKRyIA0UGXdRD13oo1oFB0cb1o82na+gYuW3AI4Z27BgAAAABJRU5ErkJggg==","hero_walk_south_1":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABj0lEQVR42u2WPUoDURRG04qNhaBdGiGFhbUiBEQQLG2sBMHCIhsQlyBCCnuxSJHSPVjYugRLS3cwch6ccDMELfLuYDEDlzdvEuY79/fNYNBf/dVf//XaHx02w/FNc3D1UIx9Z+I728OF8Pn0vVhnEIhHzyNAJxAIKLbKgEuDiN6fji+bycloYeyF4H/p3s8nx83r/UXzPTsrK3shUiJwtLe75P3t9d0SAM8ESEmD3vNyQv719lwMAO8B8X8pAIivAhCCNKQCCEGRIYawq2kQMgUAYSFYiQQAmDUiILa5sVUPIg4fhQSJ6eF3CpSUPD2+FLCqozeCIFBq4fOj3CPsM1YiVAUg9r8ArLwcEfJvUQrigKoC0B61sRuiCRRt7amI93iE2V5xHvwGwH5tAF4gAPYXAOmILVkFgLzS64jEGrADEMbibLAzqtQA3uBVPA9sN9OC0feYp2b1YRSPY1PSPoQUTjmSzX+sB0NtNFI/SAyxOXfkYkYiFcDvglj1grTvUwGixfpoP0sDiKHP/gr/AUI8Q1DH7SmfAAAAAElFTkSuQmCC","hero_walk_west_0":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA8UlEQVR42mNgGAWjYBSMglEwCkYBmUBb3fK/vH0yHIP4dLNYP7YLJ6a5Q/A5gC4hIS4i/39Fts1/F/tw+vseBjZUBf1PT6jAGgIgB9LUcpDPPyxx///i8DwMR9DFAVYqEv9BIYDsAOTcQJcoAIUCyHIQjZwNaeZ7kGUwPLlnwX9QKCCXAzQPfpDFoCAHWQ7KASA+ssWwNEAzB4B8nO2kjoKR458u2RDdEaCECKKRcwFdcgAIg3yP7AC6JERkwM0pAE90MIthjqCLA0CWoOd/utaK2CokujkC5HtQOsBWGYEsB4nTPDfAMMgiZAxzHCnmAQBQnitJaM0cNQAAAABJRU5ErkJggg==","hero_walk_west_1":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABh0lEQVR42u2XPUoEQRCFNxUTA0GzTYQNDIwVYUEEwdDESBAMDPYC4hFE2MBcDAwMvYOBVzH0BiNfw4Oamu4RtMrEHSh6Zhf6ffXD65nJZHWtrn9/ra9tdNF77s72u63NaS/+BADh6fyq27u4GwS/8/9ALwqAzWvCLZBwgFbmXjwNgE0XR7PueH7eBNBspLSAjV8WhwVgbA5SAV5vzwrE9eXNaP97EFEABzvbBeDh/qmsYzOQAkDWH2+PJT6fTwazYAcwBUAtAIBVABKuZh9tRIgiTjU0iM3MfwPAZojQd+5ZbSV81s3sfwpAppSaVb1n+ADxAHYOQiuggVPP1Xcr6gF4DgEgUzImqAAOSHBvp78GEDKEAEi0FqpEGoCGrQaCE8qS063YQ1gz4v50+T6w4d5JGOEDgmCVD6gC8gOJpzqh9rJCVrDpB5EAEtLZLwgfKS8k1iFrZ0DTFSMPI/XdDp8/DW0VioVHArChIL57JwwHkLgOKCsshyT84RUK4D9GJKbvgdqHyhcBbHTt22xWZgAAAABJRU5ErkJggg==","item_key":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA7klEQVR42u1WOwrCUBBMKzYWgnY2QgpPoFjZ2HuN3MAjiJ0XsLCw9DrewhusjDBhWWI5W+guLCHvFfPZT9I0FRUVFRW/ErPpwpDpwKt2bZfztc9u19pmObc01Y/jwex5stdt3z/v3VZPYDyafIAICtVQTyK4kzoBAlAPQADznCTiucwBAIGIv/Pn0saMlsdzOQHUmHaz+XwJ8A6nZBNAq4cS6mXgXjmAoJqEmDLr4+z7UeM2lIJH5WkrF0o591F5CrhXLq3xt5rHLpevWm87G44ODK1gGQEope0kwA9PShk4Vn73p3Z/JJP6w/EX8QZxaDIRllllcwAAAABJRU5ErkJggg==","item_potion":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABOElEQVR42u2WMQoCMRBFbcXGQtBuG8FiT6AIggiCzYIWtnYWXkA8g2BhL4IWlp5BC1tbO0tLbxB5CyNxzVolASEDnyxDdv7PTDJJoRAsWLBgwf7VSsWyElQrkfJKDuFh1lbPfT/FcTFUrXrNnwjIEAAxmHUb/rLQ64zVerlNSREB+MYXN5rKmwATvAgg1dPJ/IscnxcBkoXB6pKSihhv5BBB+jhvPjKAIOci9Po/7lfjPmCOE3JT3fNgXQQbT1854PzfkuQD+GSetb5A05HUQ0LtQZZch2TBSnckCAFNK84DcymZNQEEo+Pt4lgtoigdBadR9Ib4mGtNgDQeESAiTHAiQN8DvwTgJ/2M1k8Cdz5B87Kgl0RWzz9OOqAuIgtpzc46on4RyVtAIBeS83cBBIBVZuH9aWbDXhnHz4z6HvDNAAAAAElFTkSuQmCC","item_scroll":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABHUlEQVR42mNgGAWjYBSMglEw2IG4iPx/EKaXPgxDsp3UwXhDVRCYhhmMCyOrBWErFQnyHQHSvCLbBmzgi8PzSMIgPSC9IDPICgluToH/1HIAyCyKogDmCFIwSA/FUQBzBCwkiHEITB1ID8WWI6cFkOEflrgTHfxUsxwWCsRaDnMA1csCdEtADoJhdDlQFFDVAaDgJCUHgBxFcSGE7oDJPQtQLEAPBeSQAKmlqgNAALksIJQeaBICpBZCVHUAqCSD+Ro93+NyBNWyIXJBBLMUPe6RMcV1ALbKCIRxWYgrWyKXiGQHO3I9QGz8/7/ZhVIZwapwskMAVr9jy3b4QoUqUYHcIEGu3fBhkJr0hAq4Pqq0ikhtXsF8TfXCiBYAAPl3+HxOswWBAAAAAElFTkSuQmCC","tile_door_closed":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA8UlEQVR42mMQF5H/j4y5OQVojpHtY9BWt/yPjEEKJvcsoBkGWYpsH4YDXOzDB9YB6QkVgyMEQA6hNibaATANIDa1MMxMkkIAxAaJWalIwDHIAFL46J4iKQ2A2DAHZDupgzGy4TA+TA6dD3MAspkkJ0J0B5CCB9wBIEyyA9DLgQF1ALY0MOQdgG4fwXKAGg6gSjlAtyggVA7Q1QEDkguGhQNgCW5AHIBeiw6IA5BzFN1zAXo7gKKSkJxygCoOILYkXJFtQ5QDSC4JqeUAqrWIyC0DyK6MRrYDqB0FsPgf2g6ge4sIuWuGrV+ArY+ACxNyAAByI4n67Kt6ngAAAABJRU5ErkJggg==","tile_door_open":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABD0lEQVR42mPg5hT4P7lnAV2wi334f211SzgWF5H/zzCoHJCeUEESppoDYAaCFNACwxyLbDmKA5AVoyuiBoaZDbIQZxTAQgEkARKjBoZZTjAE0OPJSkUCjEEKKHEAsuVE5wJkB1DqEJBZJOcCkAS6A8h1BFUdAMJ0dUC2kzoYUxIKVHMAjKaLA2CJkK4OgGUXajsAuRyAhS7OohhXCCA7hBwHINcdBAsibGmAGg6gKBEOGgfAKhOaFsWD2gEwDQMWBeQ4YMBDYGilAeTCApsDQJhmDkAuhmnlAIJFMa1CgGp1ATkOoGplRK4DkDsxeNMAIQeQkwtIcgChNEBOm5DokhCfAyhtFZPtAGp0TogJAQBrHK5UKW8o1wAAAABJRU5ErkJggg==","tile_floor_a":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAkElEQVR42mPg5hT4P5CYQVxE/r+2uiVWjE+OGvJgB+BTQGs86oDh7wCiEiGhXEDLXILTATCLqYVxOY7icoCYKMBnBsE0QKkDKE6Eow4YdQBdHEDLbEiUA0AELR2Aq2CCF0T0cADeknC0Oh51wKB2wJAviIhqEYEIfHmVVi0jqrSIiJGnaYuI0iga+g4YFtkQAFc+9qOsqs/cAAAAAElFTkSuQmCC","tile_floor_b":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAjklEQVR42mMQF5H/r61uSRYG6aVUPwO5mmEGUKIfhEcdMOoAhgHPBTBDBgpjDQFsCskNHXT9GA6gdRAT0s9A64SGTz9RJeGoAwbUAZQmQqIcgM8SujmAUD4e3lEwmgtGs+FAOoBgZUTr2pDoEKB7g4TYwogaDRaKo4CmPSNaO4AqiXDUAQOaBtBzATnZEABBq/lTxeVOpQAAAABJRU5ErkJggg==","tile_floor_c":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAdUlEQVR42mMQF5H/D8La6pZUxTBzcZkPE2cAES724TR1AD41DNS2mBQHgPCoA0YdMOqAUQeMOmDgHUCLmpAYB6DUhgOJRx3AQKjBQKsWE1ENElo7gGA2HHXAsE4D8FwwYkNgNBGOOmDwOwC91gL1oGGYmg4AABcz9sDbdLZ0AAAAAElFTkSuQmCC","tile_floor_cracked":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAd0lEQVR42mMQF5H/D8La6pYYGCaHTw25GGYmAyGDaeUAmNkMxLqUFg4A4VEHjDpgQB1Aci6gBR51AAOxcUVuUYtPL01LQmL1jTpg1AGjDhh1ANXbhNiKW4IOoDUedQBFiZDSjseoA0YdMKgdQHSbkFIHYHMETBwAtoXjPCzjmSQAAAAASUVORK5CYII=","tile_stairs_down":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAB6UlEQVR42rWWMU7EMBBFcxPKLTgBEhISQqKHgpaOYi+AOAKio0cUFJScAS5AS0e5JTcI+kE/+pmMPROzKUbrTezvF8/32N3jw3OP2H089WyvHTpX5z1E20brRJ5GFeDt7mJo/7yczwZ7YCVYtqmDX2i7AOyMDq/bYzdurm8XB8dCl9r8QEJ0Sr5PAB2rukWA/ut+eLk93YwDoknOTq7GqIGoHtqYqwiAjsgXc6aRNR/6UkODMFUAduCgJbvBMyR1rH4RgJ0JwfYS51OPAKpHAP7v2JkAg8D35/isxYg6RgE4xwSAX635BwCCefvPNvT0dM7ZCrxfHvwtnwOAHYJQ99uwq0AALwWY2wVQ16qLMzvAc76ucOgB7lXWhKwJbXAc9QCndWACoLsAnfg1aEduj8Lq6TZ0AZBH5rnFeNaErJj0UFgHFAC/XvldCpIGUKerF7Jng4aOtboTAM2pEtt6vvQyomO5stRPAdRKbnQe2DME/xVgchwrAPOOyNT+2vXNPtMCpreiyZVMz/jMHaBUCb3x+p6Toz0DONwchZO0BrRDAHZW17ZMZldAa0sVQCvXvsPqrw5gDVsF4IOMoVqDWlWANU2YBqiFdbXn9FosSkHrVqutYmjCKOeZ96U+YQqiKpg1Wg2ApZgAv8khOLZGV3b+AAAAAElFTkSuQmCC","tile_wall":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABV0lEQVR42u1XO24CQQx1i9JQIFGmTMEJUqXhDrR0uQKHSEePcpdcIEdIyS0WeSUjY54/zCzQpHiCnefPm7HHq6WX2XxYLl4H/avBaxYZr20ynvZf30Mrjj8HF9UYBAP9/YbBU/4Gu1iAF6AigG0qAi6MFUZhYF2Chrz4O7GFH0vwud3B2njrVT4D+zNI/mjYBBGPOLTugSLSBvJOoJqsSYB33A8REPXH+mPTlTgVkCWYgmeQNpTFR4oi3WxigGrbezW93qIp6njXJrzliLsF9Na4ZQMkjcdYvb0P+tki41tAU+7Ya7oo/lOb8F9Adw/0TM2zADSKLbJ5jhJWfPlWwWsYOaDAVV9rc1WC6hus5+0HB9GzBFz0QHaMXo94vjYhij0KkNpoeGO4wkdjHPHkfbtVwAFbfAT8TC27qb64KidC1giVBAXKeLtbLw/sgejYkE3EexsS/gShKt/bjxmK+QAAAABJRU5ErkJggg==","tile_wall_torch_0":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAB3klEQVR42sVWMUpEMRD9rdhYCNptI2zhCRRBEMFyQQtbO4u9gHgEsbOXLSwsPYNewHY7S0tvEHlh3zLJnySTbNDikf8zyczLzJv8P2xv7bi93UkAzElYbTXrOD88PS7c98ez48hngnMx5BptXWxPYVCDfH2GYysM+9sIYJ7IBbcQGDlcwRNT5ul0TTyxJrt/ZfcluL25U2uTmo/r/vNyYa537B/YiMDb/aVbzmZ+rN3fjcD71eR/CCAo0g90J0BjzsHr/CQgQBIcqwhoOD+9Dt4ZBEBwpB7B3fIhIAGkfGoxBhkIz3FgjRQIIBCCkwDmLAHjuaAEpdTDxrTz9OhpkmCmcvtHV3HMqCQ8KUBJgBmw1H2UASsB2kFgfjYNNID3LgRKJaDQUE8Exckxsr45AqoGKDwJi4jwLIkdTo+yezWR+y7InT53IhmQjuV9YMmmSkBuLDk4Ptj3TvBno3WA1mEmDVj1AAKoP36xtODyIN0JaNrpTiCnbGggFlep5YpXseXqlDaQIEqKzxIgSq0UO8V66KCmBbNtWLpM4rpiPTvBqhn1IrKkvKVMpq9h7ec4Za+9BdcEWD+pgRZY945EiEtEqvmvoZagpSO0FrW08dCa0h52TyCVmk1LY9mPNb/uOXrhiq5s9AAAAABJRU5ErkJggg==","tile_wall_torch_1":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAB8klEQVR42r1WMU4DQQzcFtFQIEGXBikFLwAhISEkykhQ0NJR5AOIJyA6ekRBQckb4ANp06VMyQ8OzYY5+XzeXd/qSDG63O7anvXYvoTdnb3mYH/SA9aHoGSb8h9ent+a9fdrB1gj9B5xf/eQPSN9pGLAh0lgvVp0n/+BP9/1BErksO+w3xDgYWHUEtN7ynGzfMruJ+1XixgjSC0lUusk9vl4HZHS3INYAzUEGFxjKwR00OVsFp8/71fm2VEJMBBAAvK3DjgqAR3wY34Wgfevm0mPREkW+L88v90QsIBN+a5Tj6AIji7QWQCkXS5G0As6MICb6nc4RnAS4BlmxnOpngRctFLGILIOOAOsLHg7Icig3tazCNS0ZJsBDwFNYn4x7dQA3mWteArbJJCTQQaAnggKWfCkvqXK15IHWRipIrSKCL+lo+PpSdY25T/k0p4aRoAMyGzI27P93IOolH5dAziHfzYIjqccQIMJWMhNQzo/PTqMN98aAUmEekrkCs4lgZaCGlvGsqBqCLSjuFT1qX2soxCJIbadb0FtG7L1UAe1LdiTIJdynVaeBwHpuJTy3iAqfa2sSSl/l25e/BpqCWqceGyTElA/FpXVXmOiV4QYIrKatw2zDb0tVNvCso1DKlUlOcaQKxLwpMkyLJ31+IX8v877nvbkw38mAAAAAElFTkSuQmCC","ui_heart":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA7ElEQVR42mNgGAWjYBSMglEwCkYBkYCbU+A/MiZVnmLLq+TlUTCyJdjkxUXkqeMIkEEgA1dk2/x/cXje/w1VQf8Xa2vDHQGzHCQGkn/x4AJYrZWKBHVCAmQQyAKY4SAa5gAYBvFBGOQ4ZEeC9FLF92DfgSx/cOH/oWCEhdgwyHIQBqmjOCqQHQAKVpjP8GGQxVR1ACwKCFmM7ACQY6mSGEGWI4cCKRikh+I0AAsFmCMIOQTke+Sgp1p5gOwIYnwPCzmqFkaE0gMshGhiOSFH0MVyXNGBbDnV6wBiQoJuPscVEjA8IFX0gFo+bAAAKfJhWrRDrcEAAAAASUVORK5CYII=","ui_torch":"iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAt0lEQVR42mNgGAWjYBSMglEwCigEN/39/w+oAz4scf8/oJb/v9n1f0BCAWT5gDsAZDkI0z0aQD4GWfriwQUwpnsoHAqWH1gHuNiH/1+RbQNxxOF5YDZIjK4OmNyz4P+GqiA4pqsDtNUtwRamJ1TAMUiMrglRXET+v5WKBNhiulsOc0C2kzoYgxxCdweALAUlvgFzACgEBtwBsCgAsenuAG5OgYF1AMhSUFYcMAfAEiIID5gDhgUAACzCoz144rL7AAAAAElFTkSuQmCC"};
+
+const DIRS = { north:{x:0,y:-1}, south:{x:0,y:1}, east:{x:1,y:0}, west:{x:-1,y:0} };
+const DIRNAMES = Object.keys(DIRS);
+
+const HERO_HP = 10, GOBLIN_HP = 2, HERO_DMG = 1, GOBLIN_DMG = 1;
+
+/* ---------------------------------------------------------------- levels --- */
+/* map legend: # wall  . floor  , cracked floor  @ hero  > exit stair
+                g goblin  k key  D door  ! potion  s scroll                     */
+
+const LEVELS = [
+{ id:1, chapter:'I · The Apprentice\'s Cell', title:'First Word', concept:'calling a command',
+  torch:6, par:2,
+  map:['#####','#@.>#','#####'],
+  briefing:'Your master has left you in a bare cell with one instruction: <i>speak, and the world listens</i>. The stair down is one pace to your east.',
+  teaches:'A <b>command</b> is an instruction you call by name. <code>hero.move(\'east\')</code> takes one step east. Every command costs one turn of torchlight.',
+  starter:"// Walk east to the stair.\nhero.move('east');\n",
+  solution:"hero.move('east');hero.move('east');" },
+
+{ id:2, chapter:'I · The Apprentice\'s Cell', title:'Four Steps', concept:'sequence',
+  torch:10, par:4,
+  map:['#######','#@...>#','#######'],
+  briefing:'A longer hall. Four paces of cold flagstone lie between you and the stair.',
+  teaches:'Commands run <b>in order</b>, top to bottom. Write one per line and they happen one after another.',
+  starter:"// Four steps east. Write them out.\nhero.move('east');\n",
+  solution:"for(let i=0;i<4;i++)hero.move('east');" },
+
+{ id:3, chapter:'I · The Apprentice\'s Cell', title:'The Bent Corridor', concept:'directions',
+  torch:14, par:8,
+  map:['######','#@...#','####.#','#>...#','######'],
+  briefing:'The passage turns. Your torch will not last forever — every wasted step burns it down.',
+  teaches:'There are four directions: <code>\'north\'</code>, <code>\'south\'</code>, <code>\'east\'</code>, <code>\'west\'</code>. North is up.',
+  starter:"// Follow the corridor to the stair.\n",
+  solution:"for(let i=0;i<3;i++)hero.move('east');hero.move('south');hero.move('south');for(let i=0;i<3;i++)hero.move('west');" },
+
+{ id:4, chapter:'II · The Long Halls', title:'The Long Hall', concept:'for loops',
+  torch:16, par:12,
+  map:['###############','#@...........>#','###############'],
+  briefing:'Twelve identical paces. You could write twelve lines — or you could ask for the same step twelve times.',
+  teaches:'A <b>loop</b> repeats work. <code>for (let i = 0; i &lt; 12; i++) { ... }</code> runs the braces twelve times.',
+  starter:"// Twelve steps east, without writing twelve lines.\nfor (let i = 0; i < 12; i++) {\n  \n}\n",
+  solution:"for(let i=0;i<12;i++)hero.move('east');" },
+
+{ id:5, chapter:'II · The Long Halls', title:'The Locked Door', concept:'items and doors',
+  torch:20, par:10,
+  map:['########','#@.k...#','######D#','#....>.#','########'],
+  briefing:'An iron-banded door bars the way south. Somewhere on this floor lies its key.',
+  teaches:'<code>hero.take()</code> picks up whatever lies under your feet. <code>hero.open(dir)</code> opens an adjacent door, if you carry its key.',
+  starter:"// Fetch the key, then open the door.\n",
+  solution:"hero.move('east');hero.move('east');hero.take();for(let i=0;i<3;i++)hero.move('east');hero.open('south');hero.move('south');hero.move('south');hero.move('west');" },
+
+{ id:6, chapter:'II · The Long Halls', title:'The Unmeasured Hall', concept:'while + sensing',
+  torch:18, par:10,
+  map:['############','#@.........#','##########>#','############'],
+  briefing:'Your torch does not reach the end of this hall, and counting paces in the dark is a fool\'s errand. Walk until stone stops you.',
+  teaches:'<code>hero.see(dir)</code> reports the next tile: <code>\'wall\'</code>, <code>\'floor\'</code>, <code>\'goblin\'</code>… A <b>while</b> loop repeats <i>as long as</i> something stays true.',
+  starter:"// Walk east until a wall stops you, then go down.\nwhile (hero.see('east') !== 'wall') {\n  \n}\n",
+  solution:"while(hero.see('east')!=='wall')hero.move('east');hero.move('south');" },
+
+{ id:7, chapter:'III · The Forking Dark', title:'The Hidden Alcove', concept:'comparing what you see',
+  torch:16, par:3,
+  map:['########','###>####','#@.....#','########'],
+  briefing:'The stair is set into an alcove in the northern wall. You cannot see which one from here — you must feel your way along.',
+  teaches:'<code>hero.see()</code> gives you a word you can compare. Loop while it is <i>not</i> what you want, then act.',
+  starter:"// Walk east until the stair is north of you.\nwhile (hero.see('north') !== 'exit') {\n  \n}\n",
+  solution:"while(hero.see('north')!=='exit')hero.move('east');hero.move('north');" },
+
+{ id:8, chapter:'III · The Forking Dark', title:'The Goblin Guard', concept:'if / else',
+  torch:20, par:9,
+  map:['##########','#@..g...>#','##########'],
+  briefing:'A goblin squats in the corridor, gnawing something you would rather not identify. It will not move aside. It takes two blows to fell.',
+  teaches:'<code>if (test) { ... } else { ... }</code> chooses between two actions. Strike what blocks you; walk when the way is clear.',
+  starter:"// Fight through, then reach the stair.\nwhile (!hero.atExit()) {\n  if (hero.see('east') === 'goblin') {\n    \n  } else {\n    \n  }\n}\n",
+  solution:"while(!hero.atExit()){if(hero.see('east')==='goblin')hero.attack('east');else hero.move('east');}" },
+
+{ id:9, chapter:'III · The Forking Dark', title:'The Warren', concept:'combining loops and choices',
+  torch:34, par:22,
+  map:['##########','#@..g....#','########.#','#....g...#','#.########','#>.......#','##########'],
+  briefing:'Three turns, two goblins, and one torch. The same few rules, applied over and over, will carry you through.',
+  teaches:'Nothing new — only <b>while</b> and <b>if</b> together. Most programs are a small idea repeated.',
+  starter:"// A goblin may block any corridor. Clear it, then carry on.\n",
+  solution:"function go(d){while(hero.see(d)!=='wall'&&hero.see(d)!=='exit'){if(hero.see(d)==='goblin')hero.attack(d);else hero.move(d);}if(hero.see(d)==='exit')hero.move(d);}go('east');go('south');go('west');go('south');go('west');" },
+
+{ id:10, chapter:'IV · What the Mind Holds', title:'Count the Steps', concept:'variables',
+  torch:24, par:12,
+  map:['##############','#@...........#','############>#'],
+  briefing:'The archivist wants a tally. Walk the hall, count your paces, and speak the number aloud before you descend.',
+  teaches:'A <b>variable</b> remembers a value. <code>let steps = 0;</code> then <code>steps = steps + 1;</code> Use <code>log(steps)</code> to speak it into the record.',
+  starter:"let steps = 0;\n\nwhile (hero.see('east') !== 'wall') {\n  hero.move('east');\n  \n}\n\nlog(steps);\n",
+  solution:"let s=0;while(hero.see('east')!=='wall'){hero.move('east');s=s+1;}log(s);hero.move('south');" },
+
+{ id:11, chapter:'IV · What the Mind Holds', title:'The Rune Sequence', concept:'arrays',
+  torch:20, par:12,
+  map:['#######','#@....#','#####.#','#.....#','#.#####','#>....#','#######'],
+  briefing:'The path is fixed and known: four east, two south, four west, two south, one west. Rather than write eleven commands, write the path down once.',
+  teaches:'An <b>array</b> is a list: <code>const path = [\'east\', \'south\'];</code> and <code>for (const dir of path) { ... }</code> walks it item by item.',
+  starter:"const path = ['east', 'east', 'east', 'east'];\n\nfor (const dir of path) {\n  hero.move(dir);\n}\n",
+  solution:"const p=['east','east','east','east','south','south','west','west','west','west','south','south'];for(const d of p)hero.move(d);" },
+
+{ id:12, chapter:'IV · What the Mind Holds', title:'The Alchemist\'s Ledger', concept:'properties and conditions',
+  torch:30, par:22,
+  map:['##########','#@.g.g.!.#','########.#','#>.......#','##########'],
+  briefing:'Two goblins between you and a red flask. You will be bleeding by the time you reach it. Drink only if you need to — a wasted potion is a wasted turn.',
+  teaches:'<code>hero.hp</code> is a <b>property</b> you can read. Compare it: <code>if (hero.hp &lt; 8) { hero.drink(\'potion\'); }</code>',
+  starter:"// Fight east. Take the potion. Drink only if you are hurt.\n",
+  solution:"function go(d,n){for(let i=0;i<n;i++){while(hero.see(d)==='goblin')hero.attack(d);hero.move(d);}}go('east',6);hero.take();if(hero.hp<8)hero.drink('potion');hero.move('east');hero.move('south');hero.move('south');for(let i=0;i<7;i++)hero.move('west');" },
+
+{ id:13, chapter:'V · Spells of Your Own Making', title:'Inscribe a Spell', concept:'writing functions',
+  torch:40, par:18,
+  map:['##########','#@..#..>.#','#.#.#.##.#','#...#..#.#','###.####.#','#g....g..#','##########'],
+  briefing:'A winding route: south, then east, then south, then a long fighting march east, then north again. Every leg is the same act repeated — do not write it out six times.',
+  teaches:'A <b>function</b> is a spell you name yourself: <code>function clear(dir) { ... }</code> Call it as often as you like.',
+  starter:"// One spell that walks a whole leg, fighting anything in the way.\nfunction go(dir, times) {\n  for (let i = 0; i < times; i++) {\n    \n  }\n}\n\n// then call go(...) for each leg of the route\n",
+  solution:"function go(d,n){for(let i=0;i<n;i++){while(hero.see(d)==='goblin')hero.attack(d);hero.move(d);}}go('south',2);go('east',2);go('south',2);go('east',5);go('north',4);go('west',1);" },
+
+{ id:14, chapter:'V · Spells of Your Own Making', title:'The Labyrinth of Sarn', concept:'an algorithm of your own',
+  torch:120, par:24,
+  map:[
+   '###############',
+   '#@..#.........#',
+   '#.#.#.#######.#',
+   '#.#...#.....#.#',
+   '#.#####.###.#.#',
+   '#.......#g#.#.#',
+   '#.#######.#.#.#',
+   '#.........#..>#',
+   '###############'],
+  briefing:'No one has mapped the Labyrinth of Sarn. You cannot count its paces or list its turns — you can only feel the wall at your left hand and never let go of it. Write that rule, and the maze solves itself.',
+  teaches:'This is <b>an algorithm</b>: a rule small enough to write down that solves problems you have never seen. Keep your left hand on the wall.',
+  starter:"// Left-hand wall following.\n// Turn left if you can, else go straight, else turn right, else turn back.\nconst LEFT  = { north:'west',  west:'south', south:'east',  east:'north' };\nconst RIGHT = { north:'east',  east:'south', south:'west',  west:'north' };\nlet facing = 'south';\n\nwhile (!hero.atExit()) {\n  \n}\n",
+  solution:"const L={north:'west',west:'south',south:'east',east:'north'},R={north:'east',east:'south',south:'west',west:'north'};let f='south';while(!hero.atExit()){if(hero.see(L[f])!=='wall'){f=L[f];hero.move(f);}else if(hero.see(f)!=='wall'){hero.move(f);}else if(hero.see(R[f])!=='wall'){f=R[f];hero.move(f);}else{f=R[R[f]];}}" },
+];
+
+/* ------------------------------------------------------------------ world --- */
+
+class Halt extends Error {
+  constructor(kind, msg){ super(msg); this.kind = kind; this.msg = msg; }
+}
+
+function buildWorld(level){
+  const h = level.map.length, w = level.map[0].length;
+  const tiles = new Array(w*h).fill('floor');
+  const ents = [], items = [];
+  const doorsOpen = new Set();
+  let hero = null;
+  for (let y=0;y<h;y++) for (let x=0;x<w;x++){
+    const ch = level.map[y][x], i = y*w+x;
+    if (ch === '#') tiles[i] = 'wall';
+    else if (ch === ',') tiles[i] = 'cracked';
+    else if (ch === '>') tiles[i] = 'exit';
+    else if (ch === 'D') tiles[i] = 'door';
+    if (ch === '@') hero = { x, y };
+    if (ch === 'g') ents.push({ type:'goblin', x, y, hp:GOBLIN_HP, dir:'south', dead:false });
+    if (ch === 'k') items.push({ type:'key', x, y });
+    if (ch === '!') items.push({ type:'potion', x, y });
+    if (ch === 's') items.push({ type:'scroll', x, y });
+  }
+  return {
+    w, h, tiles, ents, items, doorsOpen,
+    hero: { x:hero.x, y:hero.y, dir:'south', hp:HERO_HP, inv:[], anim:0 },
+    turns:0, torch:level.torch, won:false, frames:[], line:0,
+  };
+}
+
+const at = (S,x,y) => (x<0||y<0||x>=S.w||y>=S.h) ? 'wall' : S.tiles[y*S.w+x];
+const entAt = (S,x,y) => S.ents.find(e => !e.dead && e.x===x && e.y===y);
+const itemAt = (S,x,y) => S.items.find(it => it.x===x && it.y===y);
+const doorOpen = (S,x,y) => S.doorsOpen.has(y*S.w+x);
+
+function look(S,x,y){
+  const t = at(S,x,y);
+  if (t === 'wall') return 'wall';
+  if (t === 'door' && !doorOpen(S,x,y)) return 'door';
+  const e = entAt(S,x,y); if (e) return e.type;
+  const it = itemAt(S,x,y); if (it) return it.type;
+  if (t === 'exit') return 'exit';
+  return 'floor';
+}
+
+function snapshot(S, msg, cls, fx){
+  S.frames.push({
+    hero:{ x:S.hero.x, y:S.hero.y, dir:S.hero.dir, hp:S.hero.hp, anim:S.hero.anim },
+    ents: S.ents.map(e => ({ type:e.type, x:e.x, y:e.y, dir:e.dir, hp:e.hp, dead:e.dead })),
+    items: S.items.map(i => ({ type:i.type, x:i.x, y:i.y })),
+    doors: [...S.doorsOpen],
+    turns: S.turns, torch: S.torch - S.turns, line: S.line,
+    msg: msg || null, cls: cls || '', fx: fx || null,
+  });
+}
+
+/* ---------------------------------------------------------------- the API --- */
+
+function makeApi(S, level){
+  const snap = (msg, cls, fx) => snapshot(S, msg, cls, fx);
+  const spend = () => {
+    S.turns++;
+    S.hero.anim ^= 1;
+    if (S.turns > S.torch) throw new Halt('torch',
+      `Turn ${S.turns} — your torch gutters out in the dark.`);
+  };
+  const goblinsStrike = () => {
+    for (const e of S.ents){
+      if (e.dead) continue;
+      if (Math.abs(e.x-S.hero.x) + Math.abs(e.y-S.hero.y) === 1){
+        S.hero.hp -= GOBLIN_DMG;
+        snap(`A goblin claws you for ${GOBLIN_DMG}. (hp ${Math.max(0,S.hero.hp)})`, 'bad');
+        if (S.hero.hp <= 0) throw new Halt('died', 'You fall in the dark. The dungeon keeps you.');
+      }
+    }
+  };
+  const afterTurn = () => {
+    if (at(S, S.hero.x, S.hero.y) === 'exit'){
+      S.won = true;
+      snap('You set foot on the stair. The dark gives way.', 'win');
+      throw new Halt('win','');
+    }
+    goblinsStrike();
+  };
+  const needDir = (d, fn) => {
+    if (!DIRS[d]) throw new Halt('fatal',
+      `${fn} needs a direction: 'north', 'south', 'east' or 'west'` +
+      (d === undefined ? ` — you gave it nothing.` : ` — you gave it ${JSON.stringify(d)}.`));
+    return DIRS[d];
+  };
+
+  const hero = {
+    move(d){
+      const v = needDir(d, "hero.move()");
+      const nx = S.hero.x+v.x, ny = S.hero.y+v.y;
+      const what = look(S, nx, ny);
+      if (what === 'wall') throw new Halt('fatal',
+        `You walk face-first into cold stone. There is a wall to the ${d} — check with hero.see('${d}') before you move.`);
+      if (what === 'door') throw new Halt('fatal',
+        `The door to the ${d} is shut. Open it first with hero.open('${d}').`);
+      if (what === 'goblin') throw new Halt('fatal',
+        `A goblin blocks the way ${d}. Strike it with hero.attack('${d}').`);
+      S.hero.dir = d; S.hero.x = nx; S.hero.y = ny;
+      spend(); snap(); afterTurn();
+    },
+    attack(d){
+      const v = needDir(d, "hero.attack()");
+      const e = entAt(S, S.hero.x+v.x, S.hero.y+v.y);
+      S.hero.dir = d;
+      if (!e) throw new Halt('fatal', `You swing at empty air to the ${d}. There is nothing there to fight.`);
+      e.hp -= HERO_DMG;
+      spend();
+      if (e.hp <= 0){ e.dead = true; snap(`Your spell strikes true. The ${e.type} falls.`, 'hit',
+                                          { kind:'slash', x:e.x, y:e.y }); }
+      else snap(`You strike the ${e.type}. It reels but holds. (${e.hp} left)`, 'hit',
+                { kind:'slash', x:e.x, y:e.y });
+      afterTurn();
+    },
+    take(){
+      const it = itemAt(S, S.hero.x, S.hero.y);
+      if (!it) throw new Halt('fatal', 'There is nothing beneath your feet to pick up.');
+      S.items.splice(S.items.indexOf(it), 1);
+      S.hero.inv.push(it.type);
+      spend(); snap(`You pocket the ${it.type}.`, 'say'); afterTurn();
+    },
+    open(d){
+      const v = needDir(d, "hero.open()");
+      const nx = S.hero.x+v.x, ny = S.hero.y+v.y;
+      if (at(S,nx,ny) !== 'door') throw new Halt('fatal', `There is no door to the ${d}.`);
+      if (doorOpen(S,nx,ny)) throw new Halt('fatal', `That door is already open.`);
+      if (!S.hero.inv.includes('key')) throw new Halt('fatal',
+        'The door is locked and you carry no key. Find one and hero.take() it.');
+      S.doorsOpen.add(ny*S.w+nx);
+      spend(); snap('The key turns. The door swings inward.', 'say'); afterTurn();
+    },
+    drink(what){
+      if (what !== undefined && what !== 'potion') throw new Halt('fatal',
+        `You have no ${what} to drink. Try hero.drink('potion').`);
+      if (!S.hero.inv.includes('potion')) throw new Halt('fatal',
+        'You carry no potion. Stand on one and hero.take() it first.');
+      S.hero.inv.splice(S.hero.inv.indexOf('potion'), 1);
+      S.hero.hp = Math.min(HERO_HP, S.hero.hp + 5);
+      spend(); snap(`You drain the flask. (hp ${S.hero.hp})`, 'win'); afterTurn();
+    },
+    wait(){ spend(); snap('You wait, and listen.'); afterTurn(); },
+    see(d){ const v = needDir(d, "hero.see()"); return look(S, S.hero.x+v.x, S.hero.y+v.y); },
+    atExit(){ return at(S, S.hero.x, S.hero.y) === 'exit'; },
+    has(item){ return S.hero.inv.includes(item); },
+    get hp(){ return S.hero.hp; },
+    get torch(){ return S.torch - S.turns; },
+  };
+  const log = (...vals) => {
+    snap(vals.map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join(' '), 'say');
+  };
+  return { hero, log };
+}
+
+/* --------------------------------------------------- guards + line tracking --- */
+
+const SPELLS = ['move','attack','take','open','drink','wait','see','atExit','has','hp','torch'];
+
+/** Insert a guard call at the top of every braced loop body. Adds no newlines,
+    so reported line numbers still match what the player wrote. */
+function instrument(src){
+  let out = '', i = 0;
+  const isWord = c => /[A-Za-z0-9_$]/.test(c);
+  while (i < src.length){
+    const c = src[i];
+    // skip over strings, template literals and comments untouched
+    if (c === '"' || c === "'" || c === '`'){
+      const q = c; out += c; i++;
+      while (i < src.length){ out += src[i];
+        if (src[i] === '\\'){ out += src[++i] ?? ''; i++; continue; }
+        if (src[i] === q){ i++; break; } i++; }
+      continue;
+    }
+    if (c === '/' && src[i+1] === '/'){ while (i < src.length && src[i] !== '\n') out += src[i++]; continue; }
+    if (c === '/' && src[i+1] === '*'){ out += '/*'; i += 2;
+      while (i < src.length && !(src[i] === '*' && src[i+1] === '/')) out += src[i++];
+      out += '*/'; i += 2; continue; }
+    // loop keyword at a word boundary?
+    const m = /^(while|for|do)\b/.exec(src.slice(i));
+    if (m && !isWord(src[i-1] || ' ')){
+      out += m[1]; i += m[1].length;
+      if (m[1] !== 'do'){                       // step over the (...) header
+        while (i < src.length && /\s/.test(src[i])) out += src[i++];
+        if (src[i] === '('){ let depth = 0;
+          do { if (src[i] === '(') depth++; else if (src[i] === ')') depth--; out += src[i++]; }
+          while (i < src.length && depth > 0);
+        }
+      }
+      while (i < src.length && /\s/.test(src[i])) out += src[i++];
+      if (src[i] === '{'){ out += '{__g();'; i++; }
+      continue;
+    }
+    out += c; i++;
+  }
+  return out;
+}
+
+/** Calibrate how many lines `new Function` prepends, so stacks map to user lines. */
+let LINE_OFFSET = null;
+function lineOffset(){
+  if (LINE_OFFSET !== null) return LINE_OFFSET;
+  let n = 2;
+  try {
+    const probe = new Function('return new Error();');
+    const mm = /<anonymous>:(\d+):/.exec(probe().stack || '');
+    if (mm) n = Number(mm[1]) - 1;
+  } catch {}
+  return (LINE_OFFSET = n);
+}
+function currentLine(){
+  // Frame 0 is "Error", 1 is this function, 2 is the command wrapper; the
+  // player's code is the first frame after those. Skipping a fixed depth keeps
+  // this correct whether the engine is a real <script> or itself evaluated.
+  const lines = (new Error().stack || '').split('\n');
+  for (let i = 3; i < lines.length; i++){
+    const m = /<anonymous>:(\d+):/.exec(lines[i]);
+    if (m) return Math.max(1, Number(m[1]) - lineOffset());
+  }
+  return 0;
+}
+
+/* ---------------------------------------------------------------- running --- */
+
+function balanceReport(src){
+  const stack = [], pairs = { '}':'{', ')':'(', ']':'[' };
+  let line = 1, i = 0;
+  while (i < src.length){
+    const c = src[i];
+    if (c === '\n'){ line++; i++; continue; }
+    if (c === '"' || c === "'" || c === '`'){ const q = c; i++;
+      while (i < src.length && src[i] !== q){ if (src[i] === '\\') i++; if (src[i] === '\n') line++; i++; } i++; continue; }
+    if (c === '/' && src[i+1] === '/'){ while (i < src.length && src[i] !== '\n') i++; continue; }
+    if (c === '/' && src[i+1] === '*'){ i += 2;
+      while (i < src.length && !(src[i] === '*' && src[i+1] === '/')){ if (src[i] === '\n') line++; i++; } i += 2; continue; }
+    if (c === '{' || c === '(' || c === '[') stack.push({ c, line });
+    else if (pairs[c]){
+      const top = stack.pop();
+      if (!top) return { line, msg: `This <b>${c}</b> on line ${line} has no matching <b>${pairs[c]}</b> to close.` };
+      if (top.c !== pairs[c]) return { line, msg: `You opened <b>${top.c}</b> on line ${top.line} but closed it with <b>${c}</b> on line ${line}.` };
+    }
+    i++;
+  }
+  if (stack.length){ const t = stack[stack.length-1];
+    return { line: t.line, msg: `You opened <b>${t.c}</b> on line ${t.line} and never closed it. Every <b>${t.c}</b> needs a matching <b>${ {'{':'}','(':')','[':']'}[t.c] }</b>.` }; }
+  return null;
+}
+
+const editDistance = (a,b) => {
+  const d = Array.from({length:a.length+1}, (_,i) => [i, ...Array(b.length).fill(0)]);
+  for (let j=0;j<=b.length;j++) d[0][j] = j;
+  for (let i=1;i<=a.length;i++) for (let j=1;j<=b.length;j++)
+    d[i][j] = Math.min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1] + (a[i-1]===b[j-1]?0:1));
+  return d[a.length][b.length];
+};
+const didYouMean = (name) => {
+  let best = null, bd = 99;
+  for (const s of SPELLS){ const d = editDistance(name.toLowerCase(), s.toLowerCase()); if (d < bd){ bd = d; best = s; } }
+  return bd <= Math.max(2, Math.floor(name.length/3)) ? best : null;
+};
+
+function translate(err, src, line){
+  if (err instanceof Halt) return { msg: err.msg, line, raw: null };
+  const raw = `${err.name}: ${err.message}`;
+  const m = err.message || '';
+  let mm;
+  if (err instanceof SyntaxError){
+    const bal = balanceReport(src);
+    if (bal) return { msg: bal.msg, line: bal.line, raw };
+    if (/Unexpected end of input/.test(m))
+      return { msg: 'Your spell ends in the middle of something — a bracket or brace was never closed.', line: null, raw };
+    if ((mm = /Unexpected token '?(.+?)'?$/.exec(m)))
+      return { msg: `There is a stray <b>${mm[1]}</b> where the spell did not expect one.`, line: null, raw };
+    if (/Invalid or unexpected token/.test(m))
+      return { msg: 'A quote is unmatched — every <b>\'</b> needs a closing <b>\'</b>.', line: null, raw };
+    return { msg: 'This is not written as a spell can be read. Check your brackets, braces and quotes.', line: null, raw };
+  }
+  if ((mm = /(?:hero\.)?(\w+) is not a function/.exec(m))){
+    const s = didYouMean(mm[1]);
+    return { msg: `There is no spell called <b>${mm[1]}</b>.` + (s ? ` Did you mean <b>${s}</b>?` : ''), line, raw };
+  }
+  if ((mm = /(\w+) is not defined/.exec(m))){
+    const s = didYouMean(mm[1]);
+    return { msg: `Nothing has been named <b>${mm[1]}</b> yet.` +
+      (s ? ` Did you mean <b>hero.${s}</b>?` : ` Give it a value first, like <code>let ${mm[1]} = 0;</code>`), line, raw };
+  }
+  if (/Cannot read propert(y|ies) .* of (undefined|null)/.test(m))
+    return { msg: 'You asked something of a value that does not exist yet.', line, raw };
+  if (/Assignment to constant/.test(m))
+    return { msg: 'You tried to change something declared with <b>const</b>. Use <b>let</b> if it must change.', line, raw };
+  if (/Maximum call stack/.test(m))
+    return { msg: 'A spell called itself without end, until your mind gave out.', line, raw };
+  return { msg: 'The spell failed in a way the grimoire does not describe.', line, raw };
+}
+
+function runProgram(level, source){
+  const S = buildWorld(level);
+  const { hero, log } = makeApi(S, level);
+
+  // wrap every command so each frame knows which line produced it
+  const tracked = {};
+  for (const k of Object.keys(hero)) {
+    const v = hero[k];
+    tracked[k] = (typeof v === 'function')
+      ? function(...a){ S.line = currentLine(); return v.apply(hero, a); }
+      : v;
+  }
+  for (const k of ['hp','torch'])
+    Object.defineProperty(tracked, k, { get: () => hero[k] });
+
+  const t0 = Date.now();
+  let steps = 0;
+  const guard = () => {
+    if (++steps > 2_000_000 || (steps % 4096 === 0 && Date.now() - t0 > 2000))
+      throw new Halt('torch', 'Your torch gutters out in the dark — that spell never ends.');
+  };
+
+  snapshot(S);                 // frame 0: the starting tableau
+
+  let error = null;
+  try {
+    const fn = new Function('hero','log','__g', instrument(source));
+    fn(tracked, log, guard);
+  } catch (e){
+    if (e instanceof Halt && e.kind === 'win'){ /* reached the stair */ }
+    else error = translate(e, source, S.line);
+  }
+  if (!error && !S.won) error = { msg:'Your spell ran to its end, but you never reached the stair.', line:null, raw:null };
+  return { won: S.won, frames: S.frames, error, turns: S.turns, torch: S.torch };
+}
+/*__SIM_END__*/
+</script>
+
+<script>
+/* ============================================================================
+   Renderer, editor and shell.
+   ========================================================================== */
+const TILE = 32, SCALE = 2, FRAME_MS = 170;
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* ------------------------------------------------------------- sprite load --- */
+const IMG = {};
+let ready = false;
+function loadArt(){
+  const names = Object.keys(ATLAS);
+  if (!names.length) return Promise.resolve();
+  return Promise.all(names.map(n => new Promise(res => {
+    const im = new Image();
+    im.onload = () => { IMG[n] = im; res(); };
+    im.onerror = () => res();
+    im.src = 'data:image/png;base64,' + ATLAS[n];
+  })));
+}
+const draw = (name, x, y) => { const im = IMG[name]; if (im) ctx.drawImage(im, Math.round(x), Math.round(y)); };
+
+/* --------------------------------------------------------------- app state --- */
+const SAVE = 'spellbound.v1';
+const store = {
+  data: (() => { try { return JSON.parse(localStorage.getItem(SAVE)) || {}; } catch { return {}; } })(),
+  save(){ try { localStorage.setItem(SAVE, JSON.stringify(this.data)); } catch {} },
+  get unlocked(){ return this.data.unlocked || 1; },
+  set unlocked(v){ this.data.unlocked = Math.max(this.unlocked, v); this.save(); },
+  best(id){ return (this.data.best || {})[id]; },
+  setBest(id, t){ this.data.best = this.data.best || {}; const b = this.data.best[id];
+    if (b === undefined || t < b){ this.data.best[id] = t; this.save(); } },
+  code(id){ return (this.data.code || {})[id]; },
+  setCode(id, src){ this.data.code = this.data.code || {}; this.data.code[id] = src; this.save(); },
+};
+
+let level = null, world = null, play = null;
+
+/* ------------------------------------------------------------------ render --- */
+const hash = (x,y) => { let h = x*374761393 + y*668265263; h = (h ^ (h>>13)) * 1274126177; return (h ^ (h>>16)) >>> 0; };
+const FLOORS = ['tile_floor_a','tile_floor_b','tile_floor_c'];
+
+function isWall(S,x,y){ return at(S,x,y) === 'wall'; }
+
+function drawStatic(S){
+  for (let y=0;y<S.h;y++) for (let x=0;x<S.w;x++){
+    const px = x*TILE, py = y*TILE, t = at(S,x,y);
+    if (t === 'wall'){
+      // a sconce on walls that face a room, spaced out and stable per tile
+      const facing = at(S,x,y+1) !== 'wall' && y+1 < S.h;
+      if (facing && hash(x,y) % 5 === 0) draw(torchFrame(), px, py);
+      else draw('tile_wall', px, py);
+      continue;
+    }
+    draw(t === 'cracked' ? 'tile_floor_cracked' : FLOORS[hash(x,y) % 3], px, py);
+    if (t === 'exit') draw('tile_stairs_down', px, py);
+  }
+}
+let flick = 0;
+const torchFrame = () => 'tile_wall_torch_' + (flick % 2);
+
+function drawFrame(f, prev, t){
+  ctx.setTransform(SCALE,0,0,SCALE,0,0);
+  ctx.fillStyle = '#0b0910';
+  ctx.fillRect(0,0,cv.width,cv.height);
+  drawStatic(world);
+
+  for (const d of f.doors){
+    const x = d % world.w, y = (d - x) / world.w;
+    draw('tile_door_open', x*TILE, y*TILE);
+  }
+  for (let y=0;y<world.h;y++) for (let x=0;x<world.w;x++)
+    if (at(world,x,y) === 'door' && !f.doors.includes(y*world.w+x)) draw('tile_door_closed', x*TILE, y*TILE);
+
+  for (const it of f.items) draw('item_' + it.type, it.x*TILE, it.y*TILE);
+
+  const lerp = (a,b) => a + (b-a) * t;
+  for (let i=0;i<f.ents.length;i++){
+    const e = f.ents[i]; if (e.dead) continue;
+    const p = prev && prev.ents[i] && !prev.ents[i].dead ? prev.ents[i] : e;
+    draw(`goblin_walk_${e.dir}_0`, lerp(p.x,e.x)*TILE, lerp(p.y,e.y)*TILE);
+  }
+
+  const h = f.hero, ph = prev ? prev.hero : h;
+  const hx = lerp(ph.x, h.x)*TILE, hy = lerp(ph.y, h.y)*TILE;
+  let sprite = `hero_walk_${h.dir}_${h.anim}`;
+  if (f.fx && f.fx.kind === 'slash') sprite = `hero_attack_${h.dir}`;
+  else if (f.cls === 'bad') sprite = 'hero_hurt';
+  draw(sprite, hx, hy);
+
+  if (f.fx && f.fx.kind === 'slash'){
+    const n = Math.min(2, Math.floor(t*3));
+    draw('fx_slash_' + n, f.fx.x*TILE, f.fx.y*TILE);
+  }
+
+  // torchlight: warm pool around the hero, deep dark beyond
+  const cx = hx + TILE/2, cy = hy + TILE/2;
+  const warm = ctx.createRadialGradient(cx,cy,0, cx,cy,TILE*3.2);
+  warm.addColorStop(0,'rgba(240,164,71,.16)');
+  warm.addColorStop(1,'rgba(240,164,71,0)');
+  ctx.fillStyle = warm; ctx.fillRect(0,0,world.w*TILE,world.h*TILE);
+  const dark = ctx.createRadialGradient(cx,cy,TILE*1.6, cx,cy,TILE*6.5);
+  dark.addColorStop(0,'rgba(6,5,10,0)');
+  dark.addColorStop(.55,'rgba(6,5,10,.42)');
+  dark.addColorStop(1,'rgba(6,5,10,.88)');
+  ctx.fillStyle = dark; ctx.fillRect(0,0,world.w*TILE,world.h*TILE);
+}
+
+/* -------------------------------------------------------------------- hud --- */
+function setHud(f){
+  $('hTorch').textContent = Math.max(0, f.torch);
+  $('hTurn').textContent = f.turns;
+  const pips = [];
+  for (let i=0;i<HERO_HP;i++) pips.push(`<span class="pip${i < f.hero.hp ? '' : ' off'}"></span>`);
+  $('hHp').innerHTML = pips.join('');
+  const b = store.best(level.id);
+  $('hPar').innerHTML = `par <b>${level.par}</b>` + (b !== undefined ? ` · best <b>${b}</b>` : '');
+}
+function logLine(msg, cls){
+  const el = document.createElement('div');
+  el.className = 'l ' + (cls||''); el.textContent = msg;
+  $('log').appendChild(el); $('log').scrollTop = $('log').scrollHeight;
+}
+
+/* ---------------------------------------------------------------- playback --- */
+function stop(){ if (play){ cancelAnimationFrame(play.raf); play = null; } $('bRun').disabled = false; $('bRun').textContent = 'Cast ▶'; }
+
+function startPlayback(result){
+  const frames = result.frames;
+  let i = 0, t0 = performance.now(), shown = -1;
+  $('bRun').disabled = true; $('bRun').textContent = 'Casting…';
+
+  const step = (now) => {
+    const elapsed = now - t0;
+    i = Math.min(frames.length - 1, Math.floor(elapsed / FRAME_MS));
+    const t = Math.min(1, (elapsed - i*FRAME_MS) / FRAME_MS);
+    flick = Math.floor(now / 320);
+
+    if (i !== shown){
+      shown = i;
+      const f = frames[i];
+      if (f.msg) logLine(f.msg, f.cls);
+      setHud(f);
+      markLine(f.line);
+    }
+    drawFrame(frames[i], i > 0 ? frames[i-1] : null, i > 0 ? t : 1);
+
+    if (i >= frames.length - 1 && elapsed > frames.length * FRAME_MS){ finish(result); return; }
+    play.raf = requestAnimationFrame(step);
+  };
+  play = { raf: requestAnimationFrame(step) };
+}
+
+function finish(result){
+  stop(); markLine(0);
+  if (result.won){
+    store.unlocked = Math.min(LEVELS.length, level.id + 1);
+    store.setBest(level.id, result.turns);
+    showWin(result);
+  } else if (result.error){
+    showError(result.error);
+    logLine('✗ ' + result.error.msg.replace(/<[^>]+>/g,''), 'bad');
+  }
+}
+
+/* ------------------------------------------------------------------ errors --- */
+function showError(e){
+  const box = $('err');
+  box.classList.add('show'); box.classList.remove('open');
+  $('errMsg').innerHTML = (e.line ? `<b>Line ${e.line}</b> — ` : '') + e.msg;
+  $('errTog').style.display = e.raw ? '' : 'none';
+  $('errRaw').textContent = e.raw || '';
+  if (e.line) markLine(e.line, true);
+}
+function clearError(){ $('err').classList.remove('show','open'); }
+$('errTog').onclick = () => $('err').classList.toggle('open');
+
+/* ------------------------------------------------------------------ editor --- */
+const code = $('code'), gutter = $('gutter');
+function syncGutter(){
+  const n = code.value.split('\n').length;
+  if (gutter.childElementCount !== n){
+    gutter.innerHTML = Array.from({length:n}, (_,i) => `<div>${i+1}</div>`).join('');
+  }
+  gutter.scrollTop = code.scrollTop;
+}
+function markLine(n, keep){
+  [...gutter.children].forEach((d,i) => d.classList.toggle('cur', n > 0 && i === n-1));
+  if (keep && n > 0){
+    const el = gutter.children[n-1];
+    if (el) el.scrollIntoView({ block:'nearest' });
+  }
+}
+code.addEventListener('input', () => { syncGutter(); clearError(); store.setCode(level.id, code.value); });
+code.addEventListener('scroll', () => { gutter.scrollTop = code.scrollTop; });
+code.addEventListener('keydown', e => {
+  if (e.key === 'Tab'){
+    e.preventDefault();
+    const s = code.selectionStart, en = code.selectionEnd;
+    code.value = code.value.slice(0,s) + '  ' + code.value.slice(en);
+    code.selectionStart = code.selectionEnd = s + 2;
+    syncGutter();
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter'){ e.preventDefault(); run(); }
+});
+
+/* --------------------------------------------------------------- spellbook --- */
+const BOOK = [
+  ['hero.move(dir)',    'Walk one tile. Costs a turn.', 1],
+  ['hero.see(dir)',     "What is in the next tile: 'wall', 'floor', 'door', 'goblin', 'key', 'potion', 'exit'. Free.", 6],
+  ['hero.atExit()',     'True when you stand on the stair. Free.', 6],
+  ['hero.take()',       'Pick up what lies under your feet. Costs a turn.', 5],
+  ['hero.open(dir)',    'Open an adjacent door, if you carry its key. Costs a turn.', 5],
+  ['hero.attack(dir)',  'Strike an adjacent creature. Costs a turn.', 8],
+  ['hero.hp',           'Your health, out of 10. Free to read.', 12],
+  ['hero.torch',        'Turns of torchlight left. Free to read.', 12],
+  ['hero.drink(item)',  "Drink a potion you carry. Costs a turn.", 12],
+  ['hero.has(item)',    "True if you carry it, e.g. hero.has('key'). Free.", 12],
+  ['hero.wait()',       'Do nothing for a turn.', 9],
+  ['log(value)',        'Speak a value into the adventure log. Free — your best debugging tool.', 10],
+];
+function renderBook(){
+  $('bookList').innerHTML = BOOK.filter(b => level.id >= b[2])
+    .map(b => `<dt>${b[0]}</dt><dd>${b[1]}</dd>`).join('');
+}
+$('bookH').onclick = () => $('book').classList.toggle('closed');
+
+/* ------------------------------------------------------------------ levels --- */
+function loadLevel(id){
+  stop(); clearError();
+  level = LEVELS.find(l => l.id === id) || LEVELS[0];
+  world = buildWorld(level);
+  cv.width = world.w*TILE*SCALE; cv.height = world.h*TILE*SCALE;
+  ctx.imageSmoothingEnabled = false;
+
+  $('pChap').textContent = level.chapter;
+  $('pTitle').textContent = level.title;
+  $('pNum').textContent = `${level.id} / ${LEVELS.length}`;
+  $('pBrief').innerHTML = level.briefing;
+  $('pTeach').innerHTML = level.teaches;
+  $('log').innerHTML = '';
+  logLine(`— ${level.title} —`);
+  code.value = store.code(level.id) ?? level.starter;
+  syncGutter(); renderBook();
+
+  const f0 = { hero:{x:world.hero.x,y:world.hero.y,dir:'south',hp:HERO_HP,anim:0},
+    ents: world.ents.map(e=>({...e})), items: world.items.map(i=>({...i})), doors:[],
+    turns:0, torch:level.torch, line:0, msg:null, cls:'', fx:null };
+  setHud(f0); drawFrame(f0, null, 1);
+  $('speedLbl').textContent = 'Ctrl+Enter to cast';
+}
+
+function run(){
+  if (play) return;
+  clearError(); $('log').innerHTML = '';
+  logLine(`— ${level.title} —`);
+  const result = runProgram(level, code.value);
+  if (result.frames.length <= 1 && result.error){ 
+    drawFrame(result.frames[0], null, 1); setHud(result.frames[0]);
+    showError(result.error); logLine('✗ ' + result.error.msg.replace(/<[^>]+>/g,''), 'bad');
+    return;
+  }
+  startPlayback(result);
+}
+$('bRun').onclick = run;
+$('bReset').onclick = () => { store.setCode(level.id, level.starter); loadLevel(level.id); };
+
+/* --------------------------------------------------------------- map + win --- */
+function renderMap(){
+  let html = '', chap = null;
+  for (const l of LEVELS){
+    if (l.chapter !== chap){ chap = l.chapter;
+      html += `${html ? '</div>' : ''}<div class="chap">${chap}</div><div class="grid">`; }
+    const open = l.id <= store.unlocked, best = store.best(l.id);
+    html += `<button class="card${best !== undefined ? ' done' : ''}" data-id="${l.id}"${open ? '' : ' disabled'}>
+      <div class="t">${l.id}. ${open ? l.title : '???'}</div>
+      <div class="c">${open ? l.concept : 'locked'}</div>
+      <div class="s">${best !== undefined ? `best ${best} turns · par ${l.par}` : (open ? `par ${l.par}` : '&nbsp;')}</div></button>`;
+  }
+  $('mapBody').innerHTML = html + '</div>';
+  $('mapBody').querySelectorAll('.card').forEach(b => b.onclick = () => {
+    $('map').classList.remove('show'); loadLevel(Number(b.dataset.id));
+  });
+}
+$('bMap').onclick = () => { renderMap(); $('map').classList.add('show'); };
+$('mapClose').onclick = () => $('map').classList.remove('show');
+
+function showWin(r){
+  const last = level.id === LEVELS.length;
+  $('winH').textContent = last ? 'The Labyrinth yields' : 'The stair is yours';
+  $('winSub').textContent = last
+    ? 'You wrote a rule small enough to hold in your head, and it solved a maze you had never seen. That is what programming is.'
+    : level.teaches.replace(/<[^>]+>/g,'');
+  const b = store.best(level.id);
+  $('winSt').innerHTML =
+    `turns <b>${r.turns}</b> &nbsp;·&nbsp; par <b>${level.par}</b> &nbsp;·&nbsp; best <b>${b}</b><br>` +
+    `torch left <b>${r.torch - r.turns}</b> &nbsp;·&nbsp; lines <b>${code.value.trim().split('\n').length}</b>` +
+    (r.turns <= level.par ? '<br><span style="color:var(--flame-m)">A clean cast.</span>' : '');
+  $('winNext').style.display = last ? 'none' : '';
+  $('win').classList.add('show');
+}
+$('winNext').onclick = () => { $('win').classList.remove('show'); loadLevel(Math.min(LEVELS.length, level.id+1)); };
+$('winStay').onclick = () => $('win').classList.remove('show');
+
+/* -------------------------------------------------------------------- boot --- */
+loadArt().then(() => {
+  ready = true;
+  loadLevel(store.unlocked || 1);
+  (function tick(){ if (!play){ flick = Math.floor(performance.now()/320); } requestAnimationFrame(tick); })();
+});
+</script>
+</body>
+</html>
