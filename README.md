@@ -17,7 +17,7 @@ Single HTML page. No frameworks, no build step, no network requests at runtime.
 |---|---|
 | Game design | ✅ Complete — see [`DESIGN.md`](DESIGN.md) |
 | Art specification | ✅ Complete — see [`ASSETS.md`](ASSETS.md) |
-| Art production | 🔶 **Round 1 rejected \u2014 see [`ART-REVIEW.md`](ART-REVIEW.md). Round 2 open.** |
+| Art production | 🔶 **Round 2 received and extracted at 32×32. Corrections requested — see [`ART-BRIEF.md`](ART-BRIEF.md) §0.** |
 | Engine implementation | ⬜ Next up |
 
 ---

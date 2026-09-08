@@ -1,10 +1,51 @@
-# Spellbound — Sprite Sheet Brief
+# Spellbound — Sprite Sheet Brief (round 2)
 
 **You are producing pixel art for a game. Deliver ONE PNG file.**
 
 This document is complete and self-contained. Everything you need — the layout,
 the palette, every sprite description, and the rules your output must satisfy — is
 below. You do not need any other file.
+
+---
+
+## 0. READ THIS FIRST — corrections to a previous version
+
+You produced a sheet for this brief already, and **most of it was right**. The
+sprite art was good, the 43 sprites were in exactly the right cells, and the
+magenta background was used correctly. Keep all of that.
+
+Six things must change. Nothing else about the artwork needs to be different.
+
+### Delivery format — four fixes
+
+1. **Deliver a PNG, not a JPEG.** JPEG compression smears the hard edges that
+   pixel art depends on.
+2. **No captions.** The previous sheet had the sprite's name printed underneath
+   every cell. Those caption strips are part of the image and get sliced into the
+   sprites. **Draw no text anywhere on the sheet.**
+3. **Make the grid uniform.** Previously the rows were 142, 121, 100, 94, 91 and
+   106 pixels tall — every row a different height. **Every cell must be exactly
+   the same size**, in a strict grid.
+4. **Make the image square: 2048 × 2048**, an 8 × 8 grid of 256 × 256 cells, with
+   sprites in rows 1–6 and rows 7 and 8 left blank. The previous sheet was
+   1408 × 768 with only 6 rows.
+
+### Artwork — two fixes
+
+5. **`tile_floor_b`, `tile_floor_c` and `tile_floor_cracked` are far too light.**
+   They measured 51, 64 and 59 in mean brightness against a limit of 48, giving
+   only 2.1:1, 1.8:1 and 1.9:1 contrast against the wall where 2.5:1 is required.
+   The player could not reliably tell floor from wall. **Make all four floor tiles
+   as dark as `tile_floor_a` was** — build them from `SHADOW` `#17141f` and
+   `STONE_D` `#2b2739` only, with at most a few `STONE_M` `#443f57` pixels for
+   slab joints. Keep their patterns different from each other; only change how
+   dark they are. `tile_wall` was correct — do not change it.
+6. **`goblin_walk_north_0` came out as a solid black silhouette.** It contained
+   only three colours and no detail. Redraw it properly: the goblin seen from
+   behind, in the same green palette and hunched posture as the other goblin
+   sprites.
+
+Everything below is the full brief, updated for the new sprite size.
 
 ---
 
@@ -16,10 +57,10 @@ last two rows are blank, so the sheet is square and straightforward to generate.
 
 **Deliverable: one PNG. Ideal size 2048 × 2048 (256 × 256 per cell).**
 Any square size works provided width and height both divide evenly by 8.
-Minimum useful size is 128 × 128 (16px cells).
+Minimum useful size is 256 × 256 (32px cells).
 
-Each sprite is designed to be displayed at **16 × 16 pixels**. Your cells are
-larger only so you have room to draw; the art is downsampled to 16 × 16 on
+Each sprite is designed to be displayed at **32 × 32 pixels**. Your cells are
+larger only so you have room to draw; the art is downsampled to 32 × 32 on
 import. Section 5 explains what that means for your linework — it is the single
 most important technical constraint in this brief.
 
@@ -48,7 +89,7 @@ looks:
    see where the hero may walk, they cannot write a correct program. This is the
    most important requirement in this document. Walls are **light**; floors are
    **dark**. See the measured thresholds in §8.
-2. **Every entity must be identifiable at a glance at 16 × 16.** If a key can be
+2. **Every entity must be identifiable at a glance at 32 × 32.** If a key can be
    mistaken for a potion, or a goblin for the hero, the player's reasoning fails
    through no fault of their own. Distinct silhouettes, distinct dominant hues.
 3. **Facing direction must be obvious.** The player's core verb is
@@ -70,7 +111,7 @@ robe. The defining prop is an **open spellbook held in one hand**: in this game
 code *is* magic, so the book is the character. He has no sword; his attack is a
 gesture from the book.
 
-**The goblin** is small, green, **hunched**, with a crude club or dagger. At 16×16
+**The goblin** is small, green, **hunched**, with a crude club or dagger. At 32×32
 it must never be confusable with the hero — opposite posture (hunched vs upright)
 and an unmistakably different dominant colour (green vs blue).
 
@@ -174,10 +215,10 @@ Background key colour (not part of the palette, knocked out on import): `#d020d0
 
 ---
 
-## 5. The critical constraint: everything is downsampled to 16 × 16
+## 5. The critical constraint: everything is downsampled to 32 × 32
 
-Each cell becomes a **16 × 16 sprite**. At the ideal 256 × 256 cell size, **one
-final pixel is a 16 × 16 block of your image**.
+Each cell becomes a **32 × 32 sprite**. At the ideal 256 × 256 cell size, **one
+final pixel is an 8 × 8 block of your image**.
 
 **Any feature thinner than one full block disappears.** This is measured, not
 theoretical: a test wall tile drawn at 320 × 320 with 5-pixel mortar lines came
@@ -186,15 +227,15 @@ Every scrap of brick detail averaged away.
 
 Therefore, at 256 × 256 cells:
 
-- **Every feature must be at least 16 source pixels thick.** A "1-pixel outline"
-  on the final sprite means a **16-pixel-wide band** in your image.
-- **Align everything to the 16-pixel grid.** Treat the cell as a 16 × 16 board of
+- **Every feature must be at least 8 source pixels thick.** A "1-pixel outline"
+  on the final sprite means an **8-pixel-wide band** in your image.
+- **Align everything to the 8-pixel grid.** Treat the cell as a 32 × 32 board of
   chunky blocks and fill whole blocks. Do not draw between them.
 - **No anti-aliasing, no gradients, no blur, no soft shadows, no dithering.** Each
-  16 × 16 block should be one flat colour.
+  32 × 32 block should be one flat colour.
 
-The cleanest way to satisfy all of this: **draw true 16 × 16 pixel art and scale it
-up by 16 with nearest-neighbour** (no smoothing). If your tool can emit true
+The cleanest way to satisfy all of this: **draw true 32 × 32 pixel art and scale it
+up by 8 with nearest-neighbour** (no smoothing). If your tool can emit true
 low-resolution pixel art directly, that is the best possible input.
 
 ### Other drawing rules
@@ -352,13 +393,15 @@ of the two darkest, and light the stairs with fire colours.**
 
 ## 9. Before you deliver — check each of these
 
-- [ ] Exactly **one** PNG file
+- [ ] Exactly **one PNG** file — not a JPEG
+- [ ] **No text anywhere on the sheet** — no captions, labels or sprite names
+- [ ] Every cell is exactly the same size, in a strict uniform grid
 - [ ] The image is square, and its size divides evenly by 8 (ideally 2048 × 2048)
 - [ ] All 43 sprites present, in the exact cell order of §7, none reordered
 - [ ] The blank cells — r2c8, r6c5–r6c8, and all of rows 7 and 8 — are background only
 - [ ] Only the 24 palette colours of §4 appear, plus `#d020d0` background
 - [ ] No anti-aliasing, gradients, blur or soft shadows anywhere
-- [ ] Every feature is at least one full final pixel thick (a 16-pixel block at
+- [ ] Every feature is at least one full final pixel thick (an 8-pixel block at
       256px cells) — nothing thinner, or it vanishes
 - [ ] The ten tile cells (all of row 1, plus r2c1 and r2c2) are filled edge to
       edge with **no** magenta
@@ -370,3 +413,5 @@ of the two darkest, and light the stairs with fire colours.**
 - [ ] Key and potion cannot be mistaken for each other
 - [ ] Walk frame pairs differ only slightly; west sprites mirror east sprites
 - [ ] No shadow, vignette or glow painted into the art — the engine adds lighting
+- [ ] All four floor tiles are dark — brightness at most 48, at least 2.5:1 below the wall
+- [ ] `goblin_walk_north_0` is a proper drawn goblin from behind, not a black silhouette
