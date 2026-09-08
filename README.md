@@ -24,8 +24,11 @@ Single HTML page. No frameworks, no build step, no network requests at runtime.
 
 ## Play it
 
-Open **`index.html`** in a browser. That is the whole game — one self-contained
-file with the art inlined as base64. No server, no build step, no dependencies.
+### ▶ [jackbauertv24-droid.github.io/spellbound](https://jackbauertv24-droid.github.io/spellbound/)
+
+Or clone the repo and open **`index.html`** directly — that single file *is* the
+whole game, with the art inlined as base64. No server, no build step, no
+dependencies, nothing to install.
 
 ---
 
