@@ -17,8 +17,8 @@ Single HTML page. No frameworks, no build step, no network requests at runtime.
 |---|---|
 | Game design | ✅ Complete — see [`DESIGN.md`](DESIGN.md) |
 | Art specification | ✅ Complete — see [`ASSETS.md`](ASSETS.md) |
-| Art production | ⬜ **Open — this is the current blocker** |
-| Engine implementation | ⬜ Not started (waiting on art) |
+| Art production | ✅ Complete — see [`assets/`](assets/) |
+| Engine implementation | ⬜ Next up |
 
 ---
 

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spellbound Sprite Preview</title>
+<style>
+  body {
+    background: #0b0910;
+    color: #e8e0d0;
+    font-family: monospace;
+    padding: 24px;
+  }
+  h1, h2 { color: #f0a447; }
+  .grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .card {
+    background: #17141f;
+    border: 1px solid #443f57;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 140px;
+  }
+  .card img {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    width: 64px;
+    height: 64px;
+    background: #2b2739;
+    border: 1px solid #676078;
+    margin-bottom: 8px;
+  }
+  .card span {
+    font-size: 11px;
+    word-break: break-all;
+  }
+  .scene {
+    display: inline-grid;
+    grid-template-columns: repeat(5, 48px);
+    grid-template-rows: repeat(5, 48px);
+    border: 2px solid #676078;
+    image-rendering: pixelated;
+    margin-top: 16px;
+  }
+  .scene img {
+    width: 48px;
+    height: 48px;
+    image-rendering: pixelated;
+  }
+</style>
+</head>
+<body>
+<h1>Spellbound Sprites Preview (4x Scale)</h1>
+<div id="content"></div>
+
+<script type="module">
+  const manifest = await fetch('../assets/manifest.json').then(r => r.json());
+  const content = document.getElementById('content');
+
+  function renderGroup(title, list) {
+    const h2 = document.createElement('h2');
+    h2.textContent = title;
+    content.appendChild(h2);
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    for (const name of list) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const img = document.createElement('img');
+      img.src = `../assets/sprites/${name}`;
+      const span = document.createElement('span');
+      span.textContent = name;
+      card.appendChild(img);
+      card.appendChild(span);
+      grid.appendChild(card);
+    }
+    content.appendChild(grid);
+  }
+
+  renderGroup('Tiles (10)', manifest.tiles);
+  renderGroup('Entities & Items (33)', manifest.sprites);
+</script>
+</body>
+</html>

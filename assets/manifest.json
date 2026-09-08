@@ -1,0 +1,120 @@
+{
+  "generatedBy": "tools/validate-assets.mjs",
+  "tileSize": 16,
+  "palette": {
+    "STONE_L": "#676078",
+    "VOID": "#0b0910",
+    "SHADOW": "#17141f",
+    "STONE_D": "#2b2739",
+    "STONE_M": "#443f57",
+    "STONE_H": "#938ca0",
+    "WOOD_D": "#3a2418",
+    "WOOD_M": "#6b4227",
+    "WOOD_L": "#a86b3c",
+    "FLAME_D": "#c2531f",
+    "FLAME_M": "#f0a447",
+    "FLAME_L": "#ffd98a",
+    "SKIN_D": "#b07a52",
+    "SKIN_L": "#e8c39e",
+    "ROBE_D": "#1f3f63",
+    "ROBE_M": "#2f5d8a",
+    "ROBE_L": "#4a8fc7",
+    "GOB_D": "#35542a",
+    "GOB_M": "#4f7a3a",
+    "GOB_L": "#7cb551",
+    "BLOOD_D": "#7a1f1f",
+    "BLOOD_M": "#a32b2b",
+    "BLOOD_L": "#d94f4f",
+    "BONE": "#e8e0d0"
+  },
+  "tiles": [
+    "tile_floor_a.png",
+    "tile_floor_b.png",
+    "tile_floor_c.png",
+    "tile_floor_cracked.png",
+    "tile_wall.png",
+    "tile_wall_torch_0.png",
+    "tile_wall_torch_1.png",
+    "tile_door_closed.png",
+    "tile_door_open.png",
+    "tile_stairs_down.png"
+  ],
+  "sprites": [
+    "item_key.png",
+    "item_potion.png",
+    "item_scroll.png",
+    "hero_walk_south_0.png",
+    "hero_walk_south_1.png",
+    "hero_walk_north_0.png",
+    "hero_walk_north_1.png",
+    "hero_walk_east_0.png",
+    "hero_walk_east_1.png",
+    "hero_walk_west_0.png",
+    "hero_walk_west_1.png",
+    "hero_attack_south.png",
+    "hero_attack_north.png",
+    "hero_attack_east.png",
+    "hero_attack_west.png",
+    "hero_hurt.png",
+    "goblin_walk_south_0.png",
+    "goblin_walk_south_1.png",
+    "goblin_walk_north_0.png",
+    "goblin_walk_north_1.png",
+    "goblin_walk_east_0.png",
+    "goblin_walk_east_1.png",
+    "goblin_walk_west_0.png",
+    "goblin_walk_west_1.png",
+    "goblin_attack_south.png",
+    "goblin_attack_north.png",
+    "goblin_attack_east.png",
+    "goblin_attack_west.png",
+    "fx_slash_0.png",
+    "fx_slash_1.png",
+    "fx_slash_2.png",
+    "ui_torch.png",
+    "ui_heart.png"
+  ],
+  "animations": {
+    "tile_wall_torch": [
+      "tile_wall_torch_0.png",
+      "tile_wall_torch_1.png"
+    ],
+    "hero_walk_south": [
+      "hero_walk_south_0.png",
+      "hero_walk_south_1.png"
+    ],
+    "hero_walk_north": [
+      "hero_walk_north_0.png",
+      "hero_walk_north_1.png"
+    ],
+    "hero_walk_east": [
+      "hero_walk_east_0.png",
+      "hero_walk_east_1.png"
+    ],
+    "hero_walk_west": [
+      "hero_walk_west_0.png",
+      "hero_walk_west_1.png"
+    ],
+    "goblin_walk_south": [
+      "goblin_walk_south_0.png",
+      "goblin_walk_south_1.png"
+    ],
+    "goblin_walk_north": [
+      "goblin_walk_north_0.png",
+      "goblin_walk_north_1.png"
+    ],
+    "goblin_walk_east": [
+      "goblin_walk_east_0.png",
+      "goblin_walk_east_1.png"
+    ],
+    "goblin_walk_west": [
+      "goblin_walk_west_0.png",
+      "goblin_walk_west_1.png"
+    ],
+    "fx_slash": [
+      "fx_slash_0.png",
+      "fx_slash_1.png",
+      "fx_slash_2.png"
+    ]
+  }
+}
