@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SPRITE_DIR = join(ROOT, 'assets', 'sprites');
-const SIZE = 16;
+const SIZE = 32;
 
 const PALETTE = {
   '0b0910': 'VOID',    '17141f': 'SHADOW',  '2b2739': 'STONE_D', '443f57': 'STONE_M',
@@ -276,12 +276,12 @@ for (let i = 0; i < FLOORS.length; i++) {
     const a = decodePng(readFileSync(join(SPRITE_DIR, `${FLOORS[i]}.png`)));
     const b = decodePng(readFileSync(join(SPRITE_DIR, `${FLOORS[j]}.png`)));
     let diff = 0;
-    for (let p = 0; p < 256; p++) {
+    for (let p = 0; p < SIZE * SIZE; p++) {
       if (a.px[p*4] !== b.px[p*4] || a.px[p*4+1] !== b.px[p*4+1] || a.px[p*4+2] !== b.px[p*4+2]) diff++;
     }
-    if (diff < 26) {
+    if (diff < SIZE * SIZE * 0.10) {
       visual.push(
-        `${FLOORS[i]} and ${FLOORS[j]} differ in only ${diff} of 256 pixels. Floor variants ` +
+        `${FLOORS[i]} and ${FLOORS[j]} differ in only ${diff} of ${SIZE * SIZE} pixels. Floor variants ` +
         `exist to break up visible repetition across a room; make them at least 10% different.`);
     }
   }

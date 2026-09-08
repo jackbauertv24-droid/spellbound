@@ -5,14 +5,14 @@
  *   node tools/ingest-art.mjs [--autokey] [--threshold=128]
  *
  * Image generators produce large, anti-aliased, off-palette artwork. The game
- * needs exactly 16x16, palette-snapped, binary-alpha PNGs. This bridges the two,
+ * needs exactly 32x32, palette-snapped, binary-alpha PNGs. This bridges the two,
  * so the art model can work at whatever resolution it likes.
  *
  *   assets/source/<name>.png   in   — any size, any palette
- *   assets/sprites/<name>.png  out  — 16x16, Torchlight 24, alpha 0 or 255
+ *   assets/sprites/<name>.png  out  — 32x32, Torchlight 24, alpha 0 or 255
  *
  * Steps, per file:
- *   1. box-downsample to 16x16, averaging in linear light (alpha-weighted so
+ *   1. box-downsample to 32x32, averaging in linear light (alpha-weighted so
  *      transparent pixels do not bleed dark halos into the edges)
  *   2. snap every colour to the nearest Torchlight 24 entry
  *   3. binarise alpha at --threshold
@@ -30,7 +30,7 @@ import { decodePng, encodePng } from './png.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(ROOT, 'assets', 'source');
 const OUT = join(ROOT, 'assets', 'sprites');
-const SIZE = 16;
+const SIZE = 32;
 
 const PALETTE = [
   ['VOID','0b0910'],['SHADOW','17141f'],['STONE_D','2b2739'],['STONE_M','443f57'],
@@ -140,7 +140,7 @@ for (const f of files) {
     writeFileSync(join(OUT, `${name}.png`), encodePng(SIZE, SIZE, px));
     let opaque = 0;
     for (let i = 0; i < SIZE * SIZE; i++) if (px[i*4+3]) opaque++;
-    console.log(`  ✓ ${name.padEnd(24)} ${String(img.width).padStart(4)}×${String(img.height).padEnd(4)} → 16×16   ` +
+    console.log(`  ✓ ${name.padEnd(24)} ${String(img.width).padStart(4)}×${String(img.height).padEnd(4)} → 32×32   ` +
                 `lum ${lumOf(px).toFixed(1).padStart(5)}   ${((opaque/256)*100).toFixed(0).padStart(3)}% opaque`);
     ok++;
   } catch (e) {

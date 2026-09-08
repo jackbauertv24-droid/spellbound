@@ -14,7 +14,7 @@
  * Run this after tools/validate-assets.mjs passes, then LOOK at room.png.
  * A tileset can satisfy every numeric gate and still read badly in a room.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { inflateSync, deflateSync } from 'node:zlib';
 const D = new URL('../assets/sprites/', import.meta.url).pathname;
 const crcT=[...Array(256)].map((_,n)=>{let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;return c>>>0;});
@@ -37,6 +37,8 @@ function blit(dst,dw,src,dx,dy,sc){for(let y=0;y<src.h;y++)for(let x=0;x<src.w;x
   for(let j=0;j<sc;j++)for(let i=0;i<sc;i++){const d=((dy+y*sc+j)*dw+dx+x*sc+i)*4;
     dst[d]=src.px[s];dst[d+1]=src.px[s+1];dst[d+2]=src.px[s+2];dst[d+3]=255;}}}
 
+mkdirSync(new URL('../review/', import.meta.url).pathname, { recursive: true });
+
 // ---------- contact sheet ----------
 const names=['tile_floor_a','tile_floor_b','tile_floor_c','tile_floor_cracked','tile_wall','tile_wall_torch_0','tile_wall_torch_1','tile_door_closed',
 'tile_door_open','tile_stairs_down','item_key','item_potion','item_scroll','ui_torch','ui_heart','hero_hurt',
@@ -44,7 +46,7 @@ const names=['tile_floor_a','tile_floor_b','tile_floor_c','tile_floor_cracked','
 'hero_attack_south','hero_attack_north','hero_attack_east','hero_attack_west','fx_slash_0','fx_slash_1','fx_slash_2','goblin_walk_south_0',
 'goblin_walk_south_1','goblin_walk_north_0','goblin_walk_north_1','goblin_walk_east_0','goblin_walk_east_1','goblin_walk_west_0','goblin_walk_west_1','goblin_attack_south',
 'goblin_attack_north','goblin_attack_east','goblin_attack_west'];
-const SC=6,CELL=16*SC,GAP=8,COLS=8,ROWS=Math.ceil(names.length/COLS);
+const SC=3,CELL=32*SC,GAP=8,COLS=8,ROWS=Math.ceil(names.length/COLS);
 const W=COLS*(CELL+GAP)+GAP,H=ROWS*(CELL+GAP)+GAP;
 const sheet=new Uint8Array(W*H*4);
 for(let i=0;i<W*H;i++){sheet[i*4]=0x1a;sheet[i*4+1]=0x18;sheet[i*4+2]=0x24;sheet[i*4+3]=255;}
@@ -54,12 +56,12 @@ names.forEach((n,i)=>{if(i%COLS===0)process.stdout.write(`\nrow ${(i/COLS|0)+1}:
 
 // ---------- assembled room ----------
 const map=['#########','#..k....#','#.###.#g#','#.#>#..D#','#.#####.#','#h....g.#','#########'];
-const RS=4,MW=9,MH=7,RW=MW*16*RS,RH=MH*16*RS;
+const RS=2,MW=9,MH=7,RW=MW*32*RS,RH=MH*32*RS;
 const room=new Uint8Array(RW*RH*4);
 const floors=[load('tile_floor_a'),load('tile_floor_b'),load('tile_floor_c'),load('tile_floor_cracked')];
 const wall=load('tile_wall'),torch=load('tile_wall_torch_0'),door=load('tile_door_closed'),stair=load('tile_stairs_down');
 let seed=7;const rnd=()=>(seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff;
-for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const ch=map[y][x];const px=x*16*RS,py=y*16*RS;
+for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const ch=map[y][x];const px=x*32*RS,py=y*32*RS;
   if(ch==='#'){blit(room,RW,(x===4&&y===0)||(x===0&&y===3)?torch:wall,px,py,RS);continue;}
   blit(room,RW,floors[(rnd()*4)|0],px,py,RS);
   if(ch==='>')blit(room,RW,stair,px,py,RS);

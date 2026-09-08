@@ -12,7 +12,7 @@
  * Cell size is derived from the image: a square 2048x2048 (256px cells) is
  * ideal, 128x128 (16px cells) is the minimum.
  *
- * Per cell: box-downsample to 16x16 in linear light, snap to the Torchlight 24
+ * Per cell: box-downsample to 32x32 in linear light, snap to the Torchlight 24
  * palette, binarise alpha.
  *
  * Transparency: cells in the TILES set are forced fully opaque (tiles are
@@ -27,7 +27,7 @@ import { decodePng, encodePng } from './png.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'assets', 'sprites');
-const SIZE = 16, COLS = 8, ROWS = 8;
+const SIZE = 32, COLS = 8, ROWS = 8;
 
 /** Sheet order — row by row, left to right. null = intentionally blank cell. */
 const LAYOUT = [
@@ -159,7 +159,7 @@ for (let i = 0; i < LAYOUT.length; i++) {
   let op = 0;
   for (let p = 0; p < SIZE*SIZE; p++) if (px[p*4+3]) op++;
   const warn = !opaque && op === SIZE*SIZE ? '  ← no transparency found' : (!opaque && op < 20 ? '  ← nearly empty' : '');
-  console.log(`  ✓ r${row+1}c${col+1}  ${name.padEnd(22)} lum ${lumOf(px).toFixed(1).padStart(5)}  ${String(Math.round(op/256*100)).padStart(3)}% opaque${warn}`);
+  console.log(`  ✓ r${row+1}c${col+1}  ${name.padEnd(22)} lum ${lumOf(px).toFixed(1).padStart(5)}  ${String(Math.round(op/(SIZE*SIZE)*100)).padStart(3)}% opaque${warn}`);
   n++;
 }
 console.log(`\n  ${n} sprites written to assets/sprites/`);

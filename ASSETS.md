@@ -27,7 +27,7 @@ The player's **code branches on what they visually identify on screen**. So spri
 legibility is not decoration here — it is a gameplay requirement. Three rules
 follow from that, and they outrank prettiness:
 
-1. **Every entity must be identifiable at a glance, at 16×16.** If the player
+1. **Every entity must be identifiable at a glance, at 32×32.** If the player
    confuses a key with a potion, or a door with a wall, their program is wrong
    through no fault of their reasoning. Distinct silhouettes, distinct dominant
    hues.
@@ -65,7 +65,7 @@ different dominant colour (green vs. blue).
 | Property | Value |
 |---|---|
 | Format | PNG, 8-bit RGBA (colour type 6) |
-| Sprite size | **exactly 16 × 16 pixels** |
+| Sprite size | **exactly 32 × 32 pixels** |
 | Background | fully transparent (alpha = 0) |
 | Alpha values | **only 0 or 255** — no partial transparency anywhere |
 | Colours | only the palette in §4 |
@@ -118,7 +118,7 @@ reference. Do not revive it or extend it.
 ### The pipeline
 
 Because generators emit large, anti-aliased, off-palette images and the game needs
-exactly 16×16 palette-snapped sprites, there is a conversion step. Work at
+exactly 32×32 palette-snapped sprites, there is a conversion step. Work at
 whatever resolution suits your tool:
 
 ```
@@ -126,7 +126,7 @@ assets/source/<name>.png     your generated artwork — any size, any palette
         │
         │  node tools/ingest-art.mjs [--autokey]
         ▼
-assets/sprites/<name>.png    16×16, Torchlight 24, alpha 0 or 255
+assets/sprites/<name>.png    32×32, Torchlight 24, alpha 0 or 255
         │
         │  node tools/validate-assets.mjs      §6.1 — format + readability gates
         │  node tools/preview.mjs              §6.2 — then LOOK at review/room.png
@@ -142,19 +142,19 @@ sprites are named in §5; the ingest keeps the name.
 ### Resolution: generate at 256×256, and keep features chunky
 
 Use **256×256** source images — exactly 16× the target, so one output pixel is a
-clean 16×16 source block.
+clean 32×32 source block.
 
 **Any feature thinner than one output pixel disappears.** This is not a hypothetical:
 in testing, a wall tile generated at 320×320 with 5-pixel mortar lines came back as
 a single flat colour, because 5 source pixels is a quarter of one output pixel. All
 the brick detail averaged away.
 
-So design every feature to be **at least 16 source pixels** (one full output pixel)
+So design every feature to be **at least 8 source pixels** (one full output pixel)
 thick, and ideally align features to the 16-pixel grid. Concretely: at 256×256, a
-1-pixel sprite outline is a 16-pixel-wide band in your source image.
+1-pixel sprite outline is an 8-pixel-wide band in your source image.
 
 If your generator can output true low-resolution pixel art directly, prefer that —
-feed it in at 16×16 or 32×32 and the ingest becomes near-lossless.
+feed it in at 32×32 or 32×32 and the ingest becomes near-lossless.
 
 ### Transparency
 
@@ -170,10 +170,10 @@ as background and knocks it out.
 These are the requirements AI image generators most often violate. The validator
 enforces all of them.
 
-**3.1 — The file must be 16×16 pixels, not a large picture of a small sprite.**
+**3.1 — The file must be 32×32 pixels, not a large picture of a small sprite.**
 This is the #1 failure. A 1024×1024 render of a pixel-art character is *not* a
-16×16 sprite. If your pipeline generates large, you must downsample to exactly
-16×16 such that every output pixel is one deliberate colour — then verify by
+32×32 sprite. If your pipeline generates large, you must downsample to exactly
+32×32 such that every output pixel is one deliberate colour — then verify by
 opening the file and confirming it is 16 pixels wide.
 
 **3.2 — No anti-aliasing.** No soft edges, no gradients, no blur, no glow, no
@@ -423,7 +423,7 @@ node tools/validate-assets.mjs
 
 Zero dependencies, needs only Node. **Format checks**, per file:
 
-- exact 16×16 dimensions
+- exact 32×32 dimensions
 - 8-bit RGBA
 - alpha strictly 0 or 255
 - every opaque colour present in the Torchlight 24 palette
