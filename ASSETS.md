@@ -77,6 +77,94 @@ fixes cheap. The engine packs them into an atlas at build time.
 
 ---
 
+## 2B. How the art must be produced
+
+### Required
+
+Sprites must be **drawn or image-generated as actual artwork** — by an image
+generation model, or by a person in a pixel-art editor.
+
+Suitable tools:
+
+- **PixelLab.ai** — built for game sprites; does character sheets and directional
+  walk cycles, which is the hard part of this spec
+- **Retro Diffusion** — pixel-art-native diffusion, snaps to a palette
+- **Aseprite** (paid) / **LibreSprite**, **Piskel** (free) — hand-drawn
+- A **CC0 asset pack** (Kenney, 0x72 DungeonTileset II) recut to this palette
+
+### Prohibited
+
+**Do not encode sprites as character grids, palette-indexed strings, or any other
+hand-written pixel data in source code**, and do not commit a script that emits
+sprites from such data.
+
+Round 1 of this project was rejected for exactly that. It shipped a 924-line
+generator containing entries like:
+
+```
+SPRITES['tile_wall'] = `
+4444444444444444
+3333333333333333
+32222223S3222223
+...
+```
+
+The output files were valid PNGs and passed every format check, so the letter of
+this specification was met. But hand-placing pixels in a text file is not art
+production: the ceiling is low, iteration is slow, and it is explicitly not what
+this project wants. The rejected work is preserved under `rejected/round1/` for
+reference. Do not revive it or extend it.
+
+### The pipeline
+
+Because generators emit large, anti-aliased, off-palette images and the game needs
+exactly 16×16 palette-snapped sprites, there is a conversion step. Work at
+whatever resolution suits your tool:
+
+```
+assets/source/<name>.png     your generated artwork — any size, any palette
+        │
+        │  node tools/ingest-art.mjs [--autokey]
+        ▼
+assets/sprites/<name>.png    16×16, Torchlight 24, alpha 0 or 255
+        │
+        │  node tools/validate-assets.mjs      §6.1 — format + readability gates
+        │  node tools/preview.mjs              §6.2 — then LOOK at review/room.png
+        ▼
+                             commit and push
+```
+
+`ingest-art.mjs` box-downsamples in linear light (alpha-weighted, so transparent
+regions do not bleed dark halos into the edges), snaps every colour to the nearest
+Torchlight 24 entry, and binarises alpha. Name your source files exactly as the
+sprites are named in §5; the ingest keeps the name.
+
+### Resolution: generate at 256×256, and keep features chunky
+
+Use **256×256** source images — exactly 16× the target, so one output pixel is a
+clean 16×16 source block.
+
+**Any feature thinner than one output pixel disappears.** This is not a hypothetical:
+in testing, a wall tile generated at 320×320 with 5-pixel mortar lines came back as
+a single flat colour, because 5 source pixels is a quarter of one output pixel. All
+the brick detail averaged away.
+
+So design every feature to be **at least 16 source pixels** (one full output pixel)
+thick, and ideally align features to the 16-pixel grid. Concretely: at 256×256, a
+1-pixel sprite outline is a 16-pixel-wide band in your source image.
+
+If your generator can output true low-resolution pixel art directly, prefer that —
+feed it in at 16×16 or 32×32 and the ingest becomes near-lossless.
+
+### Transparency
+
+Real alpha is best. If your generator can only give you a solid backdrop, use a
+colour that appears nowhere in the sprite (magenta `#d020d0` works well) and run
+`node tools/ingest-art.mjs --autokey`, which treats the most common border colour
+as background and knocks it out.
+
+---
+
 ## 3. Technical rules — read this twice
 
 These are the requirements AI image generators most often violate. The validator
