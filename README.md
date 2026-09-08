@@ -17,8 +17,8 @@ Single HTML page. No frameworks, no build step, no network requests at runtime.
 |---|---|
 | Game design | ✅ Complete — see [`DESIGN.md`](DESIGN.md) |
 | Art specification | ✅ Complete — see [`ASSETS.md`](ASSETS.md) |
-| Art production | 🔶 **Round 2 received and extracted at 32×32. Corrections requested — see [`ART-BRIEF.md`](ART-BRIEF.md) §0.** |
-| Engine implementation | ⬜ Next up |
+| Art production | ✅ **Complete — all 43 sprites pass `tools/validate-assets.mjs`** |
+| Engine implementation | ⬜ Not started — unblocked, art is in `assets/sprites/` |
 
 ---
 

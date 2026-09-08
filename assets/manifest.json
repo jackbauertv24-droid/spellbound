@@ -1,6 +1,6 @@
 {
   "generatedBy": "tools/validate-assets.mjs",
-  "tileSize": 16,
+  "tileSize": 32,
   "palette": {
     "STONE_L": "#676078",
     "VOID": "#0b0910",
