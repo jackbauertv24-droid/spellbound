@@ -24,28 +24,20 @@ Single HTML page. No frameworks, no build step, no network requests at runtime.
 
 ## 📌 If you are an AI model assigned to produce the art
 
-Read **[`ASSETS.md`](ASSETS.md)**. It is the complete and authoritative
-specification: exact pixel dimensions, the fixed palette, the full sprite
-inventory with required filenames, and the technical rules your output must
-satisfy.
+Read **[`ART-BRIEF.md`](ART-BRIEF.md)**. It is a single self-contained document —
+layout, palette, every sprite description and every rule. You do not need any
+other file in this repo.
 
-Then:
+Deliver **one PNG spritesheet**: an 8×8 grid of square cells, ideally 2048×2048,
+with sprites in rows 1–6 in the fixed order the brief specifies.
 
-0. Read **`ASSETS.md` §2B** first: the art must be genuinely drawn or
-   image-generated. Encoding pixels as character grids in a script is
-   prohibited — round 1 was rejected for it.
-1. Put your generated artwork in `assets/source/`, named with the **exact
-   filenames** from `ASSETS.md` §5, then run `node tools/ingest-art.mjs --autokey`
-   to convert it to 16×16 palette-snapped sprites. Filenames are the contract.
-2. Verify your work: `node tools/validate-assets.mjs` (format **and** visual-readability gates)
-3. Fix anything it reports, re-run until it passes.
-3b. Run `node tools/preview.mjs` and **look at** `review/room.png` — a tileset can
-    pass every numeric gate and still read badly once assembled into a room.
-4. Commit and push.
+The maintainer imports it with:
 
-The validator is a hard gate. It checks image dimensions, palette conformance,
-alpha binarity and completeness, and it writes `assets/manifest.json` on success.
-Do not hand back art that does not pass it.
+```bash
+node tools/ingest-sheet.mjs assets/source/spritesheet.png   # slice into 43 sprites
+node tools/validate-assets.mjs                              # format + readability gates
+node tools/preview.mjs                                      # render review/room.png
+```
 
 ---
 
@@ -54,9 +46,11 @@ Do not hand back art that does not pass it.
 ```
 DESIGN.md                  Game design: mechanics, curriculum, API, architecture
 ASSETS.md                  Art specification — read this to produce sprites
-ART-REVIEW.md              Feedback on the current art round — read before regenerating
+ART-BRIEF.md               Single self-contained brief for the art model — hand this over
+ART-REVIEW.md              Feedback on the current art round
 tools/validate-assets.mjs  Zero-dependency PNG validator (run with node)
-tools/ingest-art.mjs       Converts assets/source/ artwork into conformant sprites
+tools/ingest-sheet.mjs     Slices ONE spritesheet into the 43 sprites (preferred)
+tools/ingest-art.mjs       Converts individual assets/source/ files instead
 tools/preview.mjs          Renders review/contact.png and review/room.png
 tools/png.mjs              Shared zero-dependency PNG codec
 assets/source/             Your generated artwork goes here (any size)
