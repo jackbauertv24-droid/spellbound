@@ -209,6 +209,93 @@ if (failed) {
   process.exit(1);
 }
 
+/* ------------------------------------------------------- visual relationships */
+/* Format conformance is not enough: art can satisfy every pixel rule and still be
+   unreadable. These gates encode the requirements of ASSETS.md §1 numerically. */
+
+const lumOf = (name) => {
+  const img = decodePng(readFileSync(join(SPRITE_DIR, `${name}.png`)));
+  let sum = 0, n = 0;
+  for (let i = 0; i < img.width * img.height; i++) {
+    if (img.px[i * 4 + 3] === 0) continue;
+    sum += 0.2126 * img.px[i*4] + 0.7152 * img.px[i*4+1] + 0.0722 * img.px[i*4+2];
+    n++;
+  }
+  return sum / n;
+};
+const srgb = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+const contrast = (a, b) => {
+  const A = srgb(a), B = srgb(b);
+  return (Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05);
+};
+
+const FLOORS = ['tile_floor_a', 'tile_floor_b', 'tile_floor_c', 'tile_floor_cracked'];
+const MIN_CONTRAST  = 2.5;  // floor vs wall — the core readability rule
+const MAX_FLOOR_LUM = 48;   // floors stay recessive
+const MIN_WALL_LUM  = 85;   // walls read as lit, raised, solid
+const MIN_STAIR_LUM = 90;   // the goal must be the brightest tile
+
+const visual = [];
+const wallLum = lumOf('tile_wall');
+
+if (wallLum < MIN_WALL_LUM) {
+  visual.push(
+    `tile_wall luminance is ${wallLum.toFixed(1)}, must be at least ${MIN_WALL_LUM}. ` +
+    `Walls must read as lit and raised — build the face from STONE_L (#676078) and ` +
+    `STONE_H (#938ca0), reserving STONE_D for mortar lines and the shaded base.`);
+}
+
+for (const f of FLOORS) {
+  const fl = lumOf(f);
+  const c = contrast(fl, wallLum);
+  if (fl > MAX_FLOOR_LUM) {
+    visual.push(
+      `${f} luminance is ${fl.toFixed(1)}, must be at most ${MAX_FLOOR_LUM}. Floors are ` +
+      `background and must never compete with the entities standing on them — keep them ` +
+      `in SHADOW (#17141f) and STONE_D (#2b2739).`);
+  }
+  if (c < MIN_CONTRAST) {
+    visual.push(
+      `${f} against tile_wall has a contrast ratio of only ${c.toFixed(2)}:1, must be at ` +
+      `least ${MIN_CONTRAST}:1. At this ratio the player cannot tell walkable floor from ` +
+      `solid wall, which makes the game unplayable. This is the most important visual ` +
+      `rule in the specification.`);
+  }
+}
+
+const stairLum = lumOf('tile_stairs_down');
+if (stairLum < MIN_STAIR_LUM) {
+  visual.push(
+    `tile_stairs_down luminance is ${stairLum.toFixed(1)}, must be at least ${MIN_STAIR_LUM}. ` +
+    `The exit is the goal of every level and must be the most eye-catching tile on screen — ` +
+    `add FLAME_M (#f0a447) / FLAME_L (#ffd98a) highlights along the stair edges.`);
+}
+
+for (let i = 0; i < FLOORS.length; i++) {
+  for (let j = i + 1; j < FLOORS.length; j++) {
+    const a = decodePng(readFileSync(join(SPRITE_DIR, `${FLOORS[i]}.png`)));
+    const b = decodePng(readFileSync(join(SPRITE_DIR, `${FLOORS[j]}.png`)));
+    let diff = 0;
+    for (let p = 0; p < 256; p++) {
+      if (a.px[p*4] !== b.px[p*4] || a.px[p*4+1] !== b.px[p*4+1] || a.px[p*4+2] !== b.px[p*4+2]) diff++;
+    }
+    if (diff < 26) {
+      visual.push(
+        `${FLOORS[i]} and ${FLOORS[j]} differ in only ${diff} of 256 pixels. Floor variants ` +
+        `exist to break up visible repetition across a room; make them at least 10% different.`);
+    }
+  }
+}
+
+if (visual.length) {
+  console.log(`  ✓ All ${REQUIRED.length} sprites pass the format checks.\n`);
+  console.log(`  ✗ VISUAL READABILITY — ${visual.length} problem(s):\n`);
+  for (const v of visual) console.log(`      • ${v}\n`);
+  console.log(`  FAILED — this art is technically correct but not playable.`);
+  console.log(`  See ASSETS.md §1 (what the art has to do) and §4 (palette).\n`);
+  process.exit(1);
+}
+
 const animation = {};
 for (const n of REQUIRED) {
   const m = n.match(/^(.*)_(\d+)$/);

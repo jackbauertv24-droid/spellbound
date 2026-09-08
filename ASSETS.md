@@ -117,6 +117,50 @@ horizontally centred.
 
 ---
 
+## 3B. Measurable visual requirements — enforced by the validator
+
+The rules in §1 used to be prose, and prose was not enough: the first round of art
+satisfied every pixel-level rule in §2 and §3 perfectly and was still unplayable,
+because floors and walls came out at a **1.35:1** contrast ratio and the room read
+as one continuous brick surface. These thresholds now make §1 checkable.
+
+| Requirement | Threshold | Why |
+|---|---|---|
+| `tile_wall` mean luminance | **≥ 85** | Walls must read as lit, raised and solid. |
+| Floor tile mean luminance | **≤ 48** | Floors are background; they must never compete with entities standing on them. |
+| Floor vs `tile_wall` contrast | **≥ 2.5 : 1** | The player must tell walkable from blocked instantly. Most important rule in this document. |
+| `tile_stairs_down` luminance | **≥ 90** | The exit is the goal of every level; it must be the most eye-catching tile on screen. |
+| Difference between floor variants | **≥ 10%** of pixels | Variants exist to break up visible repetition; near-identical variants are pointless. |
+
+Luminance is `0.2126·R + 0.7152·G + 0.0722·B` averaged over opaque pixels;
+contrast is the standard WCAG relative-luminance ratio.
+
+### These thresholds are achievable — here are recipes that hit them
+
+Verified against the palette, comfortably inside the limits:
+
+- **Walls** — ~60% `STONE_L` `#676078`, ~25% `STONE_H` `#938ca0` on the top-lit edge,
+  ~15% `STONE_D` `#2b2739` for mortar lines and the shaded base. → luminance ≈ 101, contrast **2.73:1**. ✅
+- **Floors** — ~55% `STONE_D` `#2b2739`, ~40% `SHADOW` `#17141f`, ~5% `STONE_M` `#443f57`
+  for flagstone joints. → luminance ≈ 35. ✅
+- **Stairs** — ~45% `STONE_L`, ~25% `FLAME_M` `#f0a447` and ~15% `FLAME_L` `#ffd98a` catching
+  the torchlight on each step edge, ~15% `STONE_D` in the shadowed drop. → luminance ≈ 127. ✅
+
+### The underlying mistake to avoid: perspective
+
+Floors and walls are seen from **different angles** and must be drawn that way.
+
+- A **wall** is a vertical face seen from the **side**: brick or block courses, a bright
+  top edge where light lands, shadow at the base.
+- A **floor** is the ground seen from **above**: flagstones, flat, joints between slabs,
+  no top-lit edge and no vertical brick coursing.
+
+If your floor tile looks like a brick wall, it is wrong no matter how good it looks in
+isolation. In the first round both used the same side-on masonry motif, so even the
+*pattern* gave the player no cue about what was walkable.
+
+---
+
 ## 4. Palette — "Torchlight 24"
 
 Every opaque pixel must be one of these exact values.
@@ -189,16 +233,16 @@ Filenames are the contract. Use them exactly — lowercase, underscores, `.png`.
 
 | Filename | Description |
 |---|---|
-| `tile_floor_a.png` | Stone flagstone floor. Mid-dark, low contrast — it is a background, it must never compete with the entities standing on it. |
-| `tile_floor_b.png` | Second flagstone variant, different crack/joint placement. Same value range as A. |
-| `tile_floor_c.png` | Third variant. Randomly mixed by the engine to break up repetition. |
-| `tile_floor_cracked.png` | Visibly damaged flagstone with a chip or fissure. Used as an accent. |
-| `tile_wall.png` | Solid stone block wall. Must read as **raised and impassable** — strong top highlight (`STONE_L`/`STONE_H`), dark base. Clearly brighter/heavier than any floor tile. |
+| `tile_floor_a.png` | Stone flagstones seen **from above** — not brick coursing seen from the side. Mid-dark and low contrast: this is background and must never compete with the entities standing on it. **Mean luminance ≤ 48** (§3B). |
+| `tile_floor_b.png` | Second flagstone variant, different slab layout and joint placement. Same value range as A, but must differ from the other variants in **at least 10% of pixels** (§3B). |
+| `tile_floor_c.png` | Third flagstone variant, again a visibly different slab layout. Randomly mixed by the engine to break up repetition across a room. |
+| `tile_floor_cracked.png` | Visibly damaged flagstone with a chip or fissure. Must differ from `tile_floor_a` in at least 10% of pixels — in round 1 it differed in only 10 of 256, so the accent was invisible. |
+| `tile_wall.png` | Solid stone block wall, drawn as a **vertical face seen from the side**. Must read as raised and impassable: body in `STONE_L`, top-lit edge in `STONE_H`, `STONE_D` for mortar and the shaded base. **Mean luminance ≥ 85, and ≥ 2.5:1 contrast against every floor tile** (§3B). |
 | `tile_wall_torch_0.png` | Wall tile with a lit wall sconce, flame frame 1. |
 | `tile_wall_torch_1.png` | Same sconce, flame frame 2 — flame shape differs by 2–4 pixels only. Alternating these two must read as a flicker, not a jump. |
 | `tile_door_closed.png` | Wooden door in a stone frame, shut. Visible keyhole or iron band. Must read as "a thing that opens", not as wall. |
 | `tile_door_open.png` | Same door standing open — dark passage visible through the gap. Must be instantly distinguishable from closed at a glance. |
-| `tile_stairs_down.png` | Descending stone stairway — the level exit. This is the goal tile; it must be the most eye-catching tile in the game. Suggest a faint `FLAME_L` edge highlight. |
+| `tile_stairs_down.png` | Descending stone stairway — the level exit, and the goal of every level. It must be the **most eye-catching tile in the game**: run `FLAME_M`/`FLAME_L` torchlight along each step edge. **Mean luminance ≥ 90** (§3B). |
 
 #### Items — 3 files, transparent background, outlined
 
@@ -304,7 +348,8 @@ on success writes `assets/manifest.json` for the engine.
 ## 7. Definition of done
 
 - [ ] All 43 Tier 1 files exist in `assets/sprites/` with exact filenames
-- [ ] `node tools/validate-assets.mjs` exits 0
+- [ ] `node tools/validate-assets.mjs` exits 0 — this now includes the §3B visual gates
+- [ ] `node tools/preview.mjs` regenerated, and `review/room.png` was actually **looked at**
 - [ ] Scaled 3× with nearest-neighbour, hero and goblin are distinguishable instantly
 - [ ] Wall tiles are obviously impassable next to floor tiles
 - [ ] Hero facing north is obviously "from behind" and not confusable with south
